@@ -4,181 +4,337 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SubisKini - Papan Muka</title>
-    
-    <!-- Memuatkan Tailwind CSS dan Ikon -->
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        :root {
+            --color-bg: #F2F6F4;
+            --color-surface: #FFFFFF;
+            --color-ink: #16302E;
+            --color-ink-muted: #5B7370;
+            --color-primary: #0F5C5C;
+            --color-primary-dark: #0B4747;
+            --color-primary-soft: #E4F0EE;
+            --color-accent: #E8A33D;
+            --color-accent-soft: #FBEBCB;
+            --color-border: #DCE6E3;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--color-bg); color: var(--color-ink); }
+        .font-display { font-family: 'Sora', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .tab-active { color: #2563eb; border-bottom: 2px solid #2563eb; background-color: rgba(239, 246, 255, 0.5); }
+
+        .tab-btn { color: var(--color-ink-muted); }
+        .tab-active {
+            color: var(--color-primary-dark) !important;
+            background-color: var(--color-surface) !important;
+            box-shadow: 0 1px 3px rgba(15,92,92,0.15);
+        }
+
+        .pinboard {
+            background-color: var(--color-primary);
+            background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+            background-size: 14px 14px;
+            border-radius: 20px;
+        }
+        .pin-card { background: var(--color-surface); box-shadow: 0 10px 20px -6px rgba(11,71,71,0.35), 0 2px 6px rgba(11,71,71,0.15); }
+        .pin-card:nth-child(odd) { transform: rotate(-1.1deg); }
+        .pin-card:nth-child(even) { transform: rotate(1.1deg); }
+        .pin-card:hover { transform: rotate(0deg) translateY(-2px); transition: transform .2s ease; }
+        .pin-badge { background: var(--color-accent); box-shadow: 0 3px 6px rgba(0,0,0,0.25); }
+
+        .btn-primary { background: var(--color-primary); }
+        .btn-primary:hover { background: var(--color-primary-dark); }
+        .text-brand { color: var(--color-primary); }
+        .ring-brand:focus { outline: none; box-shadow: 0 0 0 2px var(--color-primary); border-color: var(--color-primary); }
+
+        /* --- Kunci akses tetamu (belum log masuk) --- */
+        .locked-zone { position: relative; }
+        .is-guest .locked-zone .lock-overlay { display: flex; }
+        .lock-overlay {
+            display: none;
+            position: absolute; inset: 0; z-index: 20;
+            background: rgba(242,246,244,0.82);
+            backdrop-filter: blur(2px);
+            border-radius: inherit;
+            flex-direction: column; align-items: center; justify-content: center; text-align: center;
+            padding: 1rem;
+        }
+        .is-guest .locked-zone .zone-inner { pointer-events: none; user-select: none; filter: blur(1.5px); opacity: .6; }
+        .is-guest .pin-card button { pointer-events: none; opacity: .55; }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 pb-20">
+<body class="pb-20 is-guest">
 
-    <nav class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <nav class="bg-white/90 backdrop-blur border-b border-[var(--color-border)] sticky top-0 z-40">
         <div class="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-2 text-blue-600 cursor-pointer" onclick="window.scrollTo(0,0)">
-                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <span class="text-white font-bold text-lg leading-none">S</span>
+            <div class="flex items-center gap-2 cursor-pointer" onclick="window.scrollTo(0,0)">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center btn-primary">
+                    <i data-lucide="pin" class="w-4 h-4 text-white"></i>
                 </div>
-                <span class="text-xl font-bold tracking-tight">SubisKini</span>
+                <span class="font-display font-extrabold text-lg tracking-tight text-brand">SubisKini</span>
             </div>
-            
-            <div class="flex items-center gap-2 bg-slate-100 rounded-full py-1 pr-4 pl-1 border border-slate-200 cursor-pointer hover:bg-slate-200 transition shadow-sm">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" alt="Profile" class="w-8 h-8 rounded-full border border-slate-300 bg-white object-cover" />
-                <span class="text-sm font-semibold text-slate-700 leading-tight">Pengguna Vercel</span>
+
+            <div id="nav-guest" class="flex items-center gap-2">
+                <button onclick="openAuthModal('login')" class="text-sm font-semibold px-4 py-2 rounded-full hover:bg-[var(--color-primary-soft)] transition" style="color:var(--color-primary-dark)">Log Masuk</button>
+                <button onclick="openAuthModal('register')" class="btn-primary text-white text-sm font-semibold px-4 py-2 rounded-full transition">Daftar Akaun</button>
+            </div>
+
+            <div id="nav-user" class="hidden items-center gap-2">
+                <div class="flex items-center gap-2 bg-[var(--color-primary-soft)] rounded-full py-1 pr-1 pl-1 border border-[var(--color-border)] relative cursor-pointer" onclick="toggleUserMenu()">
+                    <img id="nav-avatar" src="" class="w-8 h-8 rounded-full border border-white bg-white object-cover" />
+                    <span id="nav-username" class="text-sm font-semibold leading-tight pr-2" style="color:var(--color-primary-dark)"></span>
+                    <div id="user-menu" class="hidden absolute right-0 top-11 w-44 bg-white border border-[var(--color-border)] rounded-lg shadow-lg py-1 z-30 text-left">
+                        <div class="px-4 py-2 text-xs" style="color:var(--color-ink-muted)">
+                            <span id="user-menu-school"></span>
+                        </div>
+                        <button onclick="logoutUser()" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"><i data-lucide="log-out" class="w-4 h-4"></i> Log Keluar</button>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
 
     <main class="max-w-2xl mx-auto pt-6 px-4">
-        
+
         <div class="mb-6 relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <i data-lucide="search" class="h-5 w-5 text-slate-400"></i>
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <i data-lucide="search" class="h-4 w-4" style="color:var(--color-ink-muted)"></i>
             </div>
-            <input type="text" id="search-input" class="block w-full pl-10 pr-10 py-3 border border-slate-300 rounded-full leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm shadow-sm transition" placeholder="Cari program, sekolah, atau teks hebahan...">
+            <input type="text" id="search-input" class="block w-full pl-11 pr-4 py-3 border border-[var(--color-border)] rounded-full bg-white placeholder-[var(--color-ink-muted)] ring-brand sm:text-sm shadow-sm transition" placeholder="Cari program, sekolah, atau teks hebahan...">
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
-            <div class="flex border-b border-slate-100" id="composer-tabs">
-                <button onclick="switchTab('normal')" id="tab-normal" class="tab-btn flex-1 py-3 text-sm font-medium transition tab-active text-slate-500 hover:bg-slate-50">Hebahan</button>
-                <button onclick="switchTab('poll')" id="tab-poll" class="tab-btn flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 transition text-slate-500 hover:bg-slate-50"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> Undian</button>
-                <button onclick="switchTab('registration')" id="tab-registration" class="tab-btn flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 transition text-slate-500 hover:bg-slate-50"><i data-lucide="calendar" class="w-4 h-4"></i> Pendaftaran</button>
+        <div class="locked-zone rounded-2xl mb-8">
+            <div class="zone-inner bg-white rounded-2xl shadow-sm border border-[var(--color-border)] overflow-hidden">
+                <div class="flex gap-1 p-1.5 bg-[var(--color-bg)] m-3 rounded-xl" id="composer-tabs">
+                    <button onclick="switchTab('normal')" id="tab-normal" class="tab-btn flex-1 py-2.5 rounded-lg text-sm font-semibold transition tab-active">Hebahan</button>
+                    <button onclick="switchTab('poll')" id="tab-poll" class="tab-btn flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> Undian</button>
+                    <button onclick="switchTab('registration')" id="tab-registration" class="tab-btn flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition"><i data-lucide="calendar" class="w-4 h-4"></i> Pendaftaran</button>
+                </div>
+
+                <div class="p-4 pt-1">
+                    <form id="post-form">
+                        <div class="flex gap-3 mb-4">
+                            <img id="composer-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tetamu" class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-slate-50" />
+                            <textarea id="post-input" placeholder="Apa yang ingin dihebahkan?" class="w-full bg-[var(--color-bg)] rounded-xl px-4 py-3 placeholder-[var(--color-ink-muted)] outline-none resize-none min-h-[100px] border border-[var(--color-border)] focus:border-[var(--color-primary)] focus:bg-white transition" required></textarea>
+                        </div>
+
+                        <div id="poll-container" class="hidden pl-13 pr-2 space-y-2 mb-4">
+                            <div class="flex gap-2">
+                                <input type="text" id="poll-opt-1" placeholder="Pilihan 1" class="flex-1 bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]" />
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" id="poll-opt-2" placeholder="Pilihan 2" class="flex-1 bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]" />
+                            </div>
+                            <p class="text-xs mt-1" style="color:var(--color-ink-muted)">Ciri penuh undian disokong dalam integrasi pangkalan data.</p>
+                        </div>
+
+                        <div id="registration-container" class="hidden pl-13 pr-2 mb-4 space-y-3 rounded-xl border p-4" style="background:var(--color-primary-soft); border-color:var(--color-border)">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                                <input type="text" id="reg-title" placeholder="Tajuk Acara (cth: Sukan Tahunan)" class="bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]" />
+                                <input type="text" id="reg-date" placeholder="Tarikh (cth: 12 Nov 2026)" class="bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]" />
+                            </div>
+                            <div>
+                                <input type="text" id="reg-organizer" placeholder="Nama Pengelola (cth: Pejabat Pendidikan Daerah Subis)" class="w-full bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]" />
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-[var(--color-border)]">
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase block mb-1" style="color:var(--color-ink-muted)">Muat Naik Poster Hebahan</label>
+                                    <input type="file" id="reg-poster-hebahan" accept="image/*" class="w-full text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[var(--color-primary-soft)] file:text-[var(--color-primary-dark)] hover:file:opacity-80 transition cursor-pointer" />
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase block mb-1" style="color:var(--color-ink-muted)">Muat Naik Poster Keputusan</label>
+                                    <input type="file" id="reg-poster-keputusan" accept="image/*" class="w-full text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[var(--color-accent-soft)] file:text-[#8A5A0F] hover:file:opacity-80 transition cursor-pointer" />
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 mt-2">
+                                <i data-lucide="link" class="w-4 h-4" style="color:var(--color-ink-muted)"></i>
+                                <input type="url" id="reg-link" placeholder="URL Pendaftaran Luar (cth: Google Forms)" class="flex-1 bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)] transition" />
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium" style="color:var(--color-ink-muted)">Kategori:</span>
+                                <select id="post-tag" class="bg-[var(--color-bg)] border-none text-xs font-semibold py-1.5 px-3 rounded-full outline-none cursor-pointer" style="color:var(--color-ink)">
+                                    <option value="lain-lain">Lain-lain</option>
+                                    <option value="kokurikulum">Kokurikulum</option>
+                                    <option value="sukan">Sukan</option>
+                                    <option value="seni">Seni</option>
+                                </select>
+                            </div>
+                            <button type="submit" id="submit-btn" class="btn-primary text-white font-semibold py-2.5 px-6 rounded-full transition flex items-center gap-2 text-sm shadow-sm">
+                                Hebahkan
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-
-            <div class="p-4">
-                <form id="post-form">
-                    <div class="flex gap-3 mb-4">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" class="w-10 h-10 rounded-full border border-slate-200 bg-slate-50" />
-                        <textarea id="post-input" placeholder="Apa yang ingin dihebahkan?" class="w-full bg-slate-50 rounded-xl px-4 py-3 text-slate-700 placeholder-slate-400 outline-none resize-none min-h-[100px] border border-slate-200 focus:border-blue-400 focus:bg-white transition" required></textarea>
-                    </div>
-
-                    <!-- Bekas Undian (Tersembunyi secara lalai) -->
-                    <div id="poll-container" class="hidden pl-13 pr-2 space-y-2 mb-4">
-                        <div class="flex gap-2">
-                            <input type="text" id="poll-opt-1" placeholder="Pilihan 1" class="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
-                        </div>
-                        <div class="flex gap-2">
-                            <input type="text" id="poll-opt-2" placeholder="Pilihan 2" class="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
-                        </div>
-                        <p class="text-xs text-slate-400 mt-1">Ciri penuh undian disokong dalam integrasi pangkalan data.</p>
-                    </div>
-
-                    <!-- Bekas Pendaftaran (Tersembunyi secara lalai) -->
-                    <div id="registration-container" class="hidden pl-13 pr-2 mb-4 space-y-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
-                            <input type="text" id="reg-title" placeholder="Tajuk Acara (cth: Sukan Tahunan)" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
-                            <input type="text" id="reg-date" placeholder="Tarikh (cth: 12 Nov 2026)" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
-                        </div>
-                        <div>
-                            <input type="text" id="reg-organizer" placeholder="Nama Pengelola (cth: Pejabat Pendidikan Daerah Subis)" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-slate-200">
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Muat Naik Poster Hebahan</label>
-                                <input type="file" id="reg-poster-hebahan" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition cursor-pointer" />
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Muat Naik Poster Keputusan</label>
-                                <input type="file" id="reg-poster-keputusan" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 transition cursor-pointer" />
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 mt-2">
-                            <i data-lucide="link" class="w-4 h-4 text-slate-400"></i>
-                            <input type="url" id="reg-link" placeholder="URL Pendaftaran Luar (cth: Google Forms)" class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition text-slate-700" />
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between pt-2 border-t border-slate-100">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-medium text-slate-500">Kategori:</span>
-                            <select id="post-tag" class="bg-slate-100 border-none text-xs font-medium text-slate-700 py-1.5 px-3 rounded-full outline-none cursor-pointer">
-                                <option value="lain-lain">Lain-lain</option>
-                                <option value="kokurikulum">Kokurikulum</option>
-                                <option value="sukan">Sukan</option>
-                                <option value="seni">Seni</option>
-                            </select>
-                        </div>
-                        <button type="submit" id="submit-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-full transition flex items-center gap-2 text-sm shadow-sm">
-                            Hebahkan
-                        </button>
-                    </div>
-                </form>
+            <div class="lock-overlay rounded-2xl">
+                <i data-lucide="lock" class="w-6 h-6 mb-2" style="color:var(--color-primary)"></i>
+                <p class="text-sm font-semibold mb-3" style="color:var(--color-ink)">Log masuk untuk menghebah, undi, suka atau komen</p>
+                <button onclick="openAuthModal('register')" class="btn-primary text-white text-sm font-semibold px-5 py-2 rounded-full">Daftar Akaun Percuma</button>
             </div>
         </div>
 
         <div class="mb-8" id="highlight-section">
             <div class="flex items-center justify-between mb-3 px-1">
-                <h3 class="font-bold text-slate-800 flex items-center gap-2">🔥 Hangat: Acara Akan Datang</h3>
-                <span class="text-xs text-slate-500 font-medium">Boleh dileret / Klik anak panah <i data-lucide="chevron-right" class="w-3 h-3 inline"></i></span>
+                <h3 class="font-display font-bold text-[var(--color-ink)] flex items-center gap-2">
+                    <i data-lucide="pin" class="w-4 h-4 text-brand"></i> Papan Kenyataan: Acara Akan Datang
+                </h3>
+                <span class="text-xs font-medium" style="color:var(--color-ink-muted)">Leret / anak panah <i data-lucide="chevron-right" class="w-3 h-3 inline"></i></span>
             </div>
-            
-            <div class="relative group">
-                <!-- Butang Kiri -->
-                <button onclick="scrollCarousel(-1)" class="absolute -left-3 top-1/2 -translate-y-1/2 z-20 bg-white p-2 rounded-full shadow-md border border-slate-100 hidden md:group-hover:flex items-center justify-center text-slate-600 hover:text-blue-600 transition">
+
+            <div class="relative group pinboard p-4">
+                <button onclick="scrollCarousel(-1)" class="absolute left-1 top-1/2 -translate-y-1/2 z-20 bg-white p-2 rounded-full shadow-md hidden md:group-hover:flex items-center justify-center text-[var(--color-primary)] hover:opacity-80 transition">
                     <i data-lucide="chevron-left" class="w-5 h-5"></i>
                 </button>
-
-                <div id="events-carousel" class="flex overflow-x-auto gap-4 pb-4 hide-scrollbar transition-all cursor-grab snap-x snap-mandatory scroll-smooth" style="scrollbar-width: none; -ms-overflow-style: none;">
-                    <!-- Kad Kecerunan Acara akan dimuatkan di sini oleh JavaScript -->
-                </div>
-
-                <!-- Butang Kanan -->
-                <button onclick="scrollCarousel(1)" class="absolute -right-3 top-1/2 -translate-y-1/2 z-20 bg-white p-2 rounded-full shadow-md border border-slate-100 hidden md:group-hover:flex items-center justify-center text-slate-600 hover:text-blue-600 transition">
+                <div id="events-carousel" class="flex overflow-x-auto gap-5 pb-2 hide-scrollbar cursor-grab snap-x snap-mandatory scroll-smooth" style="scrollbar-width: none; -ms-overflow-style: none;"></div>
+                <button onclick="scrollCarousel(1)" class="absolute right-1 top-1/2 -translate-y-1/2 z-20 bg-white p-2 rounded-full shadow-md hidden md:group-hover:flex items-center justify-center text-[var(--color-primary)] hover:opacity-80 transition">
                     <i data-lucide="chevron-right" class="w-5 h-5"></i>
                 </button>
             </div>
+            <p class="is-guest:block hidden text-xs text-center mt-2" style="color:var(--color-ink-muted)">Highlight sentiasa boleh dilihat tanpa akaun. Daftar untuk akses penuh hebahan.</p>
         </div>
 
-        <div id="feed-container" class="space-y-4">
-            <!-- Loading State -->
-            <div class="flex justify-center py-10" id="loading-spinner">
-                <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+        <div class="locked-zone rounded-2xl">
+            <div class="zone-inner space-y-4" id="feed-container">
+                <div class="flex justify-center py-10" id="loading-spinner">
+                    <div class="w-8 h-8 border-4 rounded-full animate-spin" style="border-color:var(--color-primary-soft); border-top-color:var(--color-primary)"></div>
+                </div>
+            </div>
+            <div class="lock-overlay rounded-2xl">
+                <i data-lucide="lock" class="w-6 h-6 mb-2" style="color:var(--color-primary)"></i>
+                <p class="text-sm font-semibold mb-3" style="color:var(--color-ink)">Log masuk untuk lihat hebahan penuh komuniti</p>
+                <button onclick="openAuthModal('login')" class="text-sm font-semibold px-5 py-2 rounded-full border" style="border-color:var(--color-primary); color:var(--color-primary-dark)">Log Masuk</button>
             </div>
         </div>
 
     </main>
 
-    <!-- Modal Pengesahan Padam (Custom Confirm Box) -->
-    <div id="custom-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 transition-opacity">
-        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl transform scale-100 transition-transform">
+    <!-- Modal Padam -->
+    <div id="custom-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-ink)]/40 backdrop-blur-sm p-4 transition-opacity">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4">
                 <i data-lucide="alert-triangle" class="w-6 h-6"></i>
             </div>
-            <h3 class="font-bold text-lg text-slate-800 mb-1" id="modal-title">Padam Hebahan?</h3>
-            <p class="text-slate-500 text-sm mb-6" id="modal-message">Adakah anda pasti? Tindakan ini tidak boleh dipulihkan semula.</p>
+            <h3 class="font-display font-bold text-lg mb-1" id="modal-title">Padam Hebahan?</h3>
+            <p class="text-sm mb-6" style="color:var(--color-ink-muted)" id="modal-message">Adakah anda pasti? Tindakan ini tidak boleh dipulihkan semula.</p>
             <div class="flex justify-end gap-3">
-                <button onclick="closeModal()" class="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Batal</button>
+                <button onclick="closeModal()" class="px-5 py-2.5 text-sm font-medium hover:bg-slate-100 rounded-xl transition" style="color:var(--color-ink-muted)">Batal</button>
                 <button id="modal-confirm-btn" class="px-5 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm transition">Ya, Padam</button>
             </div>
         </div>
     </div>
 
+    <!-- Modal Daftar / Log Masuk -->
+    <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-ink)]/40 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-display font-bold text-lg" id="auth-modal-title">Daftar Akaun</h3>
+                <button onclick="closeAuthModal()" class="p-1.5 rounded-full hover:bg-slate-100" style="color:var(--color-ink-muted)"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <!-- Borang Log Masuk -->
+            <form id="login-form" class="hidden space-y-3">
+                <div>
+                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">No. Kad Pengenalan</label>
+                    <input type="text" id="login-ic" inputmode="numeric" placeholder="cth: 900101131234" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]" required />
+                </div>
+                <div>
+                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Kod Laluan (6 digit)</label>
+                    <input type="password" id="login-password" inputmode="numeric" maxlength="6" placeholder="••••••" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] tracking-widest" required />
+                </div>
+                <p id="login-error" class="hidden text-xs text-red-600"></p>
+                <button type="submit" class="w-full btn-primary text-white font-semibold py-2.5 rounded-full text-sm mt-2">Log Masuk</button>
+                <p class="text-xs text-center" style="color:var(--color-ink-muted)">Belum ada akaun? <button type="button" onclick="switchAuthMode('register')" class="font-semibold text-brand">Daftar sekarang</button></p>
+            </form>
+
+            <!-- Borang Daftar -->
+            <form id="register-form" class="space-y-3">
+                <div>
+                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Nama Penuh</label>
+                    <input type="text" id="reg-fullname" placeholder="Nama penuh seperti Kad Pengenalan" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]" required />
+                </div>
+                <div>
+                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Sekolah</label>
+                    <select id="reg-school" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]" required>
+                        <option value="" disabled selected>Pilih sekolah</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">No. Kad Pengenalan</label>
+                    <input type="text" id="reg-ic" inputmode="numeric" placeholder="cth: 900101131234 (12 digit, tanpa sengkang)" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]" required />
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Jantina (Auto)</label>
+                        <input type="text" id="reg-gender" readonly placeholder="—" class="w-full bg-slate-100 border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none" />
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Bangsa</label>
+                        <select id="reg-race" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]" required>
+                            <option value="" disabled selected>Pilih bangsa</option>
+                            <option>Melayu</option>
+                            <option>Iban</option>
+                            <option>Bidayuh</option>
+                            <option>Melanau</option>
+                            <option>Cina</option>
+                            <option>India</option>
+                            <option>Orang Ulu</option>
+                            <option>Lain-lain Bumiputera Sarawak</option>
+                            <option>Lain-lain</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Kod Laluan (6 digit)</label>
+                    <input type="password" id="reg-password" inputmode="numeric" maxlength="6" placeholder="••••••" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] tracking-widest" required />
+                </div>
+                <div>
+                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Sahkan Kod Laluan</label>
+                    <input type="password" id="reg-password-confirm" inputmode="numeric" maxlength="6" placeholder="••••••" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] tracking-widest" required />
+                </div>
+                <p id="register-error" class="hidden text-xs text-red-600"></p>
+                <button type="submit" class="w-full btn-primary text-white font-semibold py-2.5 rounded-full text-sm mt-2">Daftar & Log Masuk</button>
+                <p class="text-xs text-center" style="color:var(--color-ink-muted)">Sudah ada akaun? <button type="button" onclick="switchAuthMode('login')" class="font-semibold text-brand">Log masuk</button></p>
+            </form>
+        </div>
+    </div>
+
     <script>
+        // --- SENARAI SEKOLAH ---
+        const SCHOOL_LIST = [
+            "SJKC CHEE MUNG","SJKC CHIN NAM","SJKC CHUNG HUA SG LUMUT","SJKC CHUNG HUA SIBUTI",
+            "SK BATU NIAH","SK BATU TELLINGAI","SK BEKENU","SK BELIAU AHAD","SK BELIAU ISA",
+            "SK KELAPA SAWIT NO 1","SK KELAPA SAWIT NO 2","SK KELAPA SAWIT NO 3","SK KELAPA SAWIT NO 4","SK KELAPA SAWIT NO 5",
+            "SK KELURU TENGAH","SK KITA","SK KPG ANGUS","SK KPG BULAU","SK KPG BUNGAI","SK KPG IRAN","SK KPG KUALA SIBUTI",
+            "SK KPG MASJID","SK KPG SELANYAU","SK KPG SUBAK","SK KPG TARIKAN","SK KPG TEGAGENG","SK RANCANGAN SEPUPOK",
+            "SK RUMAH BARAT","SK RUMAH ESSAU","SK RUMAH GOYANG","SK RUMAH MENTALI","SK RUMAH RANGGONG","SK RUMAH TINGGI",
+            "SK RUMAH UNDI","SK SG BAKAS","SK SG LAMAUS","SK SG MANONG","SK SG SAEH","SK SG SEBATU","SK SG TANGAP",
+            "SK SUAI 1","SK TANJUNG BELIPAT","SK TAWAKAL SATAP","SK ULU SATAP","SMK BAKONG","SMK BEKENU",
+            "SMK LUAR BANDAR MIRI","SMK SUAI","SMK SUBIS","PPD SUBIS"
+        ];
+        const schoolSelect = document.getElementById('reg-school');
+        SCHOOL_LIST.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s; opt.textContent = s;
+            schoolSelect.appendChild(opt);
+        });
+
         // --- 1. LOGIK UI: TAB KOMPOSER ---
         let currentComposerType = 'normal';
         const postInput = document.getElementById('post-input');
-        
+
         function switchTab(type) {
             currentComposerType = type;
-            
-            // Set butang aktif
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('tab-active', 'text-blue-600');
-                btn.classList.add('text-slate-500');
-            });
-            document.getElementById(`tab-${type}`).classList.add('tab-active', 'text-blue-600');
-            document.getElementById(`tab-${type}`).classList.remove('text-slate-500');
-
-            // Set paparan borang
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
+            document.getElementById(`tab-${type}`).classList.add('tab-active');
             document.getElementById('poll-container').classList.add('hidden');
             document.getElementById('registration-container').classList.add('hidden');
-            
             if (type === 'poll') {
                 document.getElementById('poll-container').classList.remove('hidden');
                 postInput.placeholder = "Tanya sesuatu atau minta pendapat...";
@@ -189,103 +345,208 @@
                 postInput.placeholder = "Apa yang ingin dihebahkan?";
             }
         }
+        window.switchTab = switchTab;
 
-        // --- 2. LOGIK UI: FUNGSI LERET (DRAG TO SCROLL) KARUSEL ---
+        // --- 2. KARUSEL ---
         const carousel = document.getElementById('events-carousel');
-        let isDown = false;
-        let startX;
-        let scrollLeft;
+        let isDown = false, startX, scrollLeft;
 
-        // Tambahan Fungsi Butang Anak Panah
         window.scrollCarousel = function(direction) {
-            const scrollAmount = carousel.clientWidth; 
+            const scrollAmount = carousel.clientWidth;
             const maxScroll = carousel.scrollWidth - carousel.clientWidth;
-            
-            if (direction === 1) { // Kanan
-                // Jika sudah di hujung, kembali ke awal
-                if (carousel.scrollLeft >= maxScroll - 10) {
-                    carousel.scrollTo({ left: 0, behavior: 'smooth' }); 
-                } else {
-                    carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-                }
-            } else { // Kiri
-                // Jika di awal, pergi ke hujung
-                if (carousel.scrollLeft <= 10) {
-                    carousel.scrollTo({ left: maxScroll, behavior: 'smooth' }); 
-                } else {
-                    carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-                }
+            if (direction === 1) {
+                if (carousel.scrollLeft >= maxScroll - 10) carousel.scrollTo({ left: 0, behavior: 'smooth' });
+                else carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            } else {
+                if (carousel.scrollLeft <= 10) carousel.scrollTo({ left: maxScroll, behavior: 'smooth' });
+                else carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
             }
         };
+        carousel.addEventListener('mousedown', (e) => { isDown = true; carousel.classList.add('cursor-grabbing'); startX = e.pageX - carousel.offsetLeft; scrollLeft = carousel.scrollLeft; });
+        carousel.addEventListener('mouseleave', () => { isDown = false; carousel.classList.remove('cursor-grabbing'); });
+        carousel.addEventListener('mouseup', () => { isDown = false; carousel.classList.remove('cursor-grabbing'); });
+        carousel.addEventListener('mousemove', (e) => { if (!isDown) return; e.preventDefault(); const x = e.pageX - carousel.offsetLeft; carousel.scrollLeft = scrollLeft - (x - startX) * 2; });
 
-        carousel.addEventListener('mousedown', (e) => {
-            isDown = true;
-            carousel.classList.add('cursor-grabbing');
-            carousel.classList.remove('cursor-grab');
-            startX = e.pageX - carousel.offsetLeft;
-            scrollLeft = carousel.scrollLeft;
-        });
-        carousel.addEventListener('mouseleave', () => {
-            isDown = false;
-            carousel.classList.remove('cursor-grabbing');
-            carousel.classList.add('cursor-grab');
-        });
-        carousel.addEventListener('mouseup', () => {
-            isDown = false;
-            carousel.classList.remove('cursor-grabbing');
-            carousel.classList.add('cursor-grab');
-        });
-        carousel.addEventListener('mousemove', (e) => {
-            if (!isDown) return;
-            e.preventDefault();
-            const x = e.pageX - carousel.offsetLeft;
-            const walk = (x - startX) * 2; // Kelajuan leretan
-            carousel.scrollLeft = scrollLeft - walk;
-        });
-
-        // --- 3. MEMBINA KAD KECERUNAN (HIGHLIGHT) ---
         const eventsData = [
-            { title: "Karnival Sukan Air Bekenu 2026", date: "15 Ogos 2026", organizer: "Majlis Daerah Subis", theme: { bg: "from-indigo-500 to-blue-600", shadow: "shadow-blue-200", text: "text-blue-700", light: "text-blue-100" } },
-            { title: "Pertandingan E-Sukan Parlimen Sibuti", date: "2 September 2026", organizer: "Pusat Khidmat Parlimen", theme: { bg: "from-orange-500 to-red-500", shadow: "shadow-orange-200", text: "text-orange-700", light: "text-orange-100" } },
-            { title: "Bengkel Usahawan Belia Sarawak", date: "10 September 2026", organizer: "Kementerian Belia dan Sukan", theme: { bg: "from-emerald-500 to-teal-600", shadow: "shadow-teal-200", text: "text-teal-700", light: "text-teal-100" } },
-            { title: "Kejohanan Olahraga MSSD Subis", date: "14 Ogos 2026", organizer: "SMK Luar Bandar Miri", theme: { bg: "from-purple-500 to-fuchsia-600", shadow: "shadow-purple-200", text: "text-purple-700", light: "text-purple-100" } }
+            { title: "Karnival Sukan Air Bekenu 2026", date: "15 Ogos 2026", organizer: "Majlis Daerah Subis" },
+            { title: "Pertandingan E-Sukan Parlimen Sibuti", date: "2 September 2026", organizer: "Pusat Khidmat Parlimen" },
+            { title: "Bengkel Usahawan Belia Sarawak", date: "10 September 2026", organizer: "Kementerian Belia dan Sukan" },
+            { title: "Kejohanan Olahraga MSSD Subis", date: "14 Ogos 2026", organizer: "SMK Luar Bandar Miri" }
         ];
-
         function renderCarousel() {
             carousel.innerHTML = '';
             const total = eventsData.length;
             eventsData.forEach((ev, index) => {
                 carousel.innerHTML += `
-                    <div class="w-full shrink-0 snap-center bg-gradient-to-br ${ev.theme.bg} rounded-2xl p-6 text-white shadow-lg ${ev.theme.shadow} flex flex-col justify-between relative overflow-hidden group select-none">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10"></div>
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="flex items-center gap-1 ${ev.theme.light} text-xs font-medium uppercase tracking-wider">
-                                    <i data-lucide="calendar" class="w-3 h-3"></i> ${ev.date}
-                                </div>
-                                <div class="bg-black/20 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-widest backdrop-blur-sm shadow-sm">
-                                    ${index + 1} / ${total}
-                                </div>
-                            </div>
-                            <h4 class="font-bold text-lg leading-tight mb-1">${ev.title}</h4>
-                            <p class="${ev.theme.light} text-xs line-clamp-1">${ev.organizer}</p>
+                    <div class="pin-card w-[85%] sm:w-[70%] shrink-0 snap-center rounded-2xl p-5 relative select-none">
+                        <div class="pin-badge w-7 h-7 rounded-full absolute -top-3 left-1/2 -translate-x-1/2 flex items-center justify-center">
+                            <i data-lucide="pin" class="w-3.5 h-3.5 text-white"></i>
                         </div>
-                        <button class="mt-4 w-full py-2 bg-white ${ev.theme.text} font-semibold rounded-xl text-sm shadow-sm hover:shadow transition flex items-center justify-center gap-1 z-10 relative cursor-pointer">
-                            Daftar Sekarang <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                `;
+                        <div class="flex items-center justify-between mb-2 mt-1">
+                            <div class="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-brand"><i data-lucide="calendar" class="w-3 h-3"></i> ${ev.date}</div>
+                            <div class="text-[10px] font-bold tracking-widest" style="color:var(--color-ink-muted)">${index + 1} / ${total}</div>
+                        </div>
+                        <h4 class="font-display font-bold text-base leading-tight mb-1" style="color:var(--color-ink)">${ev.title}</h4>
+                        <p class="text-xs line-clamp-1 mb-4" style="color:var(--color-ink-muted)">${ev.organizer}</p>
+                        <button class="w-full py-2 btn-primary text-white font-semibold rounded-xl text-sm shadow-sm hover:opacity-90 transition flex items-center justify-center gap-1 cursor-pointer">Daftar Sekarang <i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                    </div>`;
             });
+            lucide.createIcons();
         }
         renderCarousel();
+
+        // --- 3. UTILITI HASH & IC ---
+        async function sha256Hex(text) {
+            const enc = new TextEncoder().encode(text);
+            const buf = await crypto.subtle.digest('SHA-256', enc);
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        function cleanIC(ic) { return (ic || '').replace(/\D/g, ''); }
+        function genderFromIC(ic) {
+            const digits = cleanIC(ic);
+            if (digits.length !== 12) return null;
+            const lastDigit = parseInt(digits.slice(-1), 10);
+            return (lastDigit % 2 === 0) ? 'Perempuan' : 'Lelaki';
+        }
+        document.getElementById('reg-ic').addEventListener('input', (e) => {
+            const g = genderFromIC(e.target.value);
+            document.getElementById('reg-gender').value = g || '—';
+        });
+        [document.getElementById('login-password'), document.getElementById('reg-password'), document.getElementById('reg-password-confirm')].forEach(inp => {
+            inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 6); });
+        });
+
+        // --- 4. MODAL AUTH ---
+        window.openAuthModal = function(mode) {
+            document.getElementById('auth-modal').classList.remove('hidden');
+            switchAuthMode(mode);
+        };
+        window.closeAuthModal = function() {
+            document.getElementById('auth-modal').classList.add('hidden');
+            document.getElementById('login-error').classList.add('hidden');
+            document.getElementById('register-error').classList.add('hidden');
+        };
+        window.switchAuthMode = function(mode) {
+            document.getElementById('login-form').classList.toggle('hidden', mode !== 'login');
+            document.getElementById('register-form').classList.toggle('hidden', mode !== 'register');
+            document.getElementById('auth-modal-title').textContent = mode === 'login' ? 'Log Masuk' : 'Daftar Akaun';
+        };
+
+        // --- 5. SESI PENGGUNA ---
+        const SESSION_KEY = 'subiskini_session';
+        let currentUser = null;
+
+        function loadSession() {
+            try {
+                const raw = localStorage.getItem(SESSION_KEY);
+                currentUser = raw ? JSON.parse(raw) : null;
+            } catch (e) { currentUser = null; }
+            window.currentUser = currentUser;
+            updateAuthUI();
+        }
+        function saveSession(profile) {
+            currentUser = profile;
+            window.currentUser = profile;
+            localStorage.setItem(SESSION_KEY, JSON.stringify(profile));
+            updateAuthUI();
+        }
+        window.logoutUser = function() {
+            currentUser = null;
+            window.currentUser = null;
+            localStorage.removeItem(SESSION_KEY);
+            updateAuthUI();
+            document.getElementById('user-menu').classList.add('hidden');
+        };
+        window.toggleUserMenu = function() {
+            document.getElementById('user-menu').classList.toggle('hidden');
+        };
+
+        function updateAuthUI() {
+            const isGuest = !currentUser;
+            document.body.classList.toggle('is-guest', isGuest);
+            document.getElementById('nav-guest').classList.toggle('hidden', !isGuest);
+            document.getElementById('nav-guest').classList.toggle('flex', isGuest);
+            document.getElementById('nav-user').classList.toggle('hidden', isGuest);
+            document.getElementById('nav-user').classList.toggle('flex', !isGuest);
+            if (!isGuest) {
+                document.getElementById('nav-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentUser.ic)}`;
+                document.getElementById('nav-username').textContent = currentUser.fullName;
+                document.getElementById('user-menu-school').textContent = currentUser.school;
+                document.getElementById('composer-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentUser.ic)}`;
+            }
+        }
+
+        // --- 6. STOR PROFIL (Firebase jika dikonfigurasikan, jika tidak guna localStorage sebagai demo) ---
+        // Definisi sebenar fungsi getProfileByIC / createProfile ada dalam <script type="module"> di bawah,
+        // supaya boleh guna Firebase Realtime Database SDK.
+
+        window.handleLoginSubmit = async function(e) {
+            e.preventDefault();
+            const errEl = document.getElementById('login-error');
+            errEl.classList.add('hidden');
+
+            const ic = cleanIC(document.getElementById('login-ic').value);
+            const password = document.getElementById('login-password').value;
+
+            if (ic.length !== 12) { errEl.textContent = 'No. Kad Pengenalan mesti 12 digit.'; errEl.classList.remove('hidden'); return; }
+            if (password.length !== 6) { errEl.textContent = 'Kod laluan mesti 6 digit.'; errEl.classList.remove('hidden'); return; }
+
+            const profile = await window.getProfileByIC(ic);
+            if (!profile) { errEl.textContent = 'No. IC tidak dijumpai. Sila daftar akaun.'; errEl.classList.remove('hidden'); return; }
+
+            const hash = await sha256Hex(ic + ':' + password);
+            if (hash !== profile.passwordHash) { errEl.textContent = 'Kod laluan salah.'; errEl.classList.remove('hidden'); return; }
+
+            saveSession({ ic, fullName: profile.fullName, school: profile.school, gender: profile.gender, race: profile.race });
+            closeAuthModal();
+        };
+
+        window.handleRegisterSubmit = async function(e) {
+            e.preventDefault();
+            const errEl = document.getElementById('register-error');
+            errEl.classList.add('hidden');
+
+            const fullName = document.getElementById('reg-fullname').value.trim();
+            const school = document.getElementById('reg-school').value;
+            const ic = cleanIC(document.getElementById('reg-ic').value);
+            const gender = genderFromIC(ic);
+            const race = document.getElementById('reg-race').value;
+            const password = document.getElementById('reg-password').value;
+            const passwordConfirm = document.getElementById('reg-password-confirm').value;
+
+            if (!fullName) { errEl.textContent = 'Sila isi nama penuh.'; errEl.classList.remove('hidden'); return; }
+            if (!school) { errEl.textContent = 'Sila pilih sekolah.'; errEl.classList.remove('hidden'); return; }
+            if (ic.length !== 12) { errEl.textContent = 'No. Kad Pengenalan mesti 12 digit.'; errEl.classList.remove('hidden'); return; }
+            if (!gender) { errEl.textContent = 'No. Kad Pengenalan tidak sah.'; errEl.classList.remove('hidden'); return; }
+            if (!race) { errEl.textContent = 'Sila pilih bangsa.'; errEl.classList.remove('hidden'); return; }
+            if (password.length !== 6) { errEl.textContent = 'Kod laluan mesti 6 digit.'; errEl.classList.remove('hidden'); return; }
+            if (password !== passwordConfirm) { errEl.textContent = 'Kod laluan tidak sepadan.'; errEl.classList.remove('hidden'); return; }
+
+            const existing = await window.getProfileByIC(ic);
+            if (existing) { errEl.textContent = 'No. IC ini sudah didaftarkan. Sila log masuk.'; errEl.classList.remove('hidden'); return; }
+
+            const passwordHash = await sha256Hex(ic + ':' + password);
+            const profile = { fullName, school, ic, gender, race, passwordHash, createdAt: Date.now() };
+            await window.createProfile(ic, profile);
+
+            saveSession({ ic, fullName, school, gender, race });
+            closeAuthModal();
+        };
+
+        document.getElementById('login-form').addEventListener('submit', handleLoginSubmit);
+        document.getElementById('register-form').addEventListener('submit', handleRegisterSubmit);
+
+        loadSession();
+        lucide.createIcons();
     </script>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+        import { getDatabase, ref, onValue, push, set, get, child } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
         // =========================================================================
-        // MASUKKAN KONFIGURASI FIREBASE ANDA DI SINI
+        // MASUKKAN KONFIGURASI FIREBASE ANDA DI SINI (satu sahaja, dikongsi oleh
+        // hebahan/posts DAN profiles/akaun — tiada Supabase digunakan)
         // =========================================================================
         const firebaseConfig = {
             // apiKey: "API_KEY_ANDA",
@@ -299,375 +560,245 @@
         const submitBtn = document.getElementById('submit-btn');
 
         const isFirebaseConfigured = Object.keys(firebaseConfig).length > 0;
-        let db, postsRef;
+        let db, postsRef, profilesRef;
 
-        // --- 4. FUNGSI RENDER ANTARAMUKA HEBAHAN (POST CARDS) ---
+        if (isFirebaseConfigured) {
+            const app = initializeApp(firebaseConfig);
+            db = getDatabase(app);
+            postsRef = ref(db, 'posts');
+            profilesRef = ref(db, 'profiles');
+        }
+
+        // --- Stor profil: Firebase jika ada konfigurasi, jika tidak guna localStorage (mod demo) ---
+        window.getProfileByIC = async function(ic) {
+            if (isFirebaseConfigured) {
+                const snap = await get(child(profilesRef, ic));
+                return snap.exists() ? snap.val() : null;
+            }
+            const all = JSON.parse(localStorage.getItem('subiskini_profiles_demo') || '{}');
+            return all[ic] || null;
+        };
+        window.createProfile = async function(ic, profileData) {
+            if (isFirebaseConfigured) {
+                await set(child(profilesRef, ic), profileData);
+                return;
+            }
+            const all = JSON.parse(localStorage.getItem('subiskini_profiles_demo') || '{}');
+            all[ic] = profileData;
+            localStorage.setItem('subiskini_profiles_demo', JSON.stringify(all));
+        };
+
         const tagColors = {
-            'kokurikulum': 'bg-blue-100 text-blue-700', 'sukan': 'bg-red-100 text-red-700',
-            'seni': 'bg-purple-100 text-purple-700', 'lain-lain': 'bg-slate-100 text-slate-700'
+            'kokurikulum': 'bg-[var(--color-primary-soft)] text-[var(--color-primary-dark)]',
+            'sukan': 'bg-red-100 text-red-700', 'seni': 'bg-purple-100 text-purple-700', 'lain-lain': 'bg-slate-100 text-slate-700'
         };
 
         function createPostHTML(post) {
             const avatar = post.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author_name}`;
             const tagColor = tagColors[post.tag] || 'bg-slate-100 text-slate-700';
             const tagLabel = post.tag ? post.tag.charAt(0).toUpperCase() + post.tag.slice(1) : 'Lain-lain';
-
             let extraContent = '';
 
-            // Paparan Khas Jika Jenis "Poll" (Undian)
             if (post.type === 'poll' && post.poll) {
                 let pollHtml = '<div class="mt-3 mb-4 space-y-2">';
                 post.poll.options.forEach(opt => {
                     const pct = post.poll.totalVotes > 0 ? Math.round((opt.votes / post.poll.totalVotes) * 100) : 0;
-                    pollHtml += `
-                        <div class="relative bg-slate-50 rounded-lg overflow-hidden border border-slate-200">
-                            <div class="absolute top-0 left-0 bottom-0 bg-blue-100 transition-all duration-1000" style="width: ${pct}%"></div>
-                            <div class="relative p-3 flex justify-between items-center z-10">
-                                <span class="font-medium text-slate-700 text-sm">${opt.text}</span>
-                                <span class="text-xs font-bold text-slate-500">${pct}%</span>
-                            </div>
-                        </div>`;
+                    pollHtml += `<div class="relative bg-[var(--color-bg)] rounded-lg overflow-hidden border border-[var(--color-border)]"><div class="absolute top-0 left-0 bottom-0 bg-[var(--color-primary-soft)] transition-all duration-1000" style="width: ${pct}%"></div><div class="relative p-3 flex justify-between items-center z-10"><span class="font-medium text-sm" style="color:var(--color-ink)">${opt.text}</span><span class="text-xs font-bold" style="color:var(--color-ink-muted)">${pct}%</span></div></div>`;
                 });
-                pollHtml += `<div class="text-xs text-slate-500 mt-2 px-1">${post.poll.totalVotes} undian</div></div>`;
+                pollHtml += `<div class="text-xs mt-2 px-1" style="color:var(--color-ink-muted)">${post.poll.totalVotes} undian</div></div>`;
                 extraContent = pollHtml;
             }
 
-            // Paparan Khas Jika Jenis "Registration" (Pendaftaran)
             if (post.type === 'registration' && post.registration) {
                 let postersHtml = '';
-                
-                // Menjana blok gambar jika ada salah satu poster
                 if (post.registration.posterHebahan || post.registration.posterKeputusan) {
-                    postersHtml = `<div class="grid ${post.registration.posterHebahan && post.registration.posterKeputusan ? 'grid-cols-2' : 'grid-cols-1'} gap-2 border-b border-slate-200 bg-slate-100 p-2">`;
-                    
-                    if (post.registration.posterHebahan) {
-                        postersHtml += `<div class="relative"><span class="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2.5 py-0.5 rounded shadow font-bold tracking-wider">HEBAHAN</span><img src="${post.registration.posterHebahan}" class="w-full h-40 object-cover rounded shadow-sm border border-slate-200" /></div>`;
-                    }
-                    if (post.registration.posterKeputusan) {
-                        postersHtml += `<div class="relative"><span class="absolute top-2 left-2 bg-orange-500 text-white text-[10px] px-2.5 py-0.5 rounded shadow font-bold tracking-wider">KEPUTUSAN</span><img src="${post.registration.posterKeputusan}" class="w-full h-40 object-cover rounded shadow-sm border border-slate-200" /></div>`;
-                    }
+                    postersHtml = `<div class="grid ${post.registration.posterHebahan && post.registration.posterKeputusan ? 'grid-cols-2' : 'grid-cols-1'} gap-2 border-b border-[var(--color-border)] bg-[var(--color-bg)] p-2">`;
+                    if (post.registration.posterHebahan) postersHtml += `<div class="relative"><span class="absolute top-2 left-2 btn-primary text-white text-[10px] px-2.5 py-0.5 rounded shadow font-bold tracking-wider">HEBAHAN</span><img src="${post.registration.posterHebahan}" class="w-full h-40 object-cover rounded shadow-sm border border-[var(--color-border)]" /></div>`;
+                    if (post.registration.posterKeputusan) postersHtml += `<div class="relative"><span class="absolute top-2 left-2 text-white text-[10px] px-2.5 py-0.5 rounded shadow font-bold tracking-wider" style="background:var(--color-accent)">KEPUTUSAN</span><img src="${post.registration.posterKeputusan}" class="w-full h-40 object-cover rounded shadow-sm border border-[var(--color-border)]" /></div>`;
                     postersHtml += `</div>`;
                 } else {
-                    // Poster lalai jika tiada gambar dimuat naik
-                    postersHtml = `<div class="relative w-full h-32 bg-slate-100 border-b border-slate-200 flex items-center justify-center">
-                        <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop" alt="Poster Lalai" class="max-h-full max-w-full object-cover opacity-40 grayscale" />
-                    </div>`;
+                    postersHtml = `<div class="relative w-full h-32 bg-[var(--color-bg)] border-b border-[var(--color-border)] flex items-center justify-center"><img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop" alt="Poster Lalai" class="max-h-full max-w-full object-cover opacity-40 grayscale" /></div>`;
                 }
-
-                extraContent = `
-                    <div class="mt-3 mb-4 rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
-                        ${postersHtml}
-                        <div class="p-4">
-                            <h4 class="font-bold text-slate-800 text-lg leading-tight mb-2">${post.registration.title}</h4>
-                            <div class="flex flex-col gap-1.5 text-sm text-slate-600 font-medium mb-4">
-                                <span class="flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4 text-blue-500"></i> ${post.registration.date}</span>
-                                ${post.registration.organizer ? `<span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-emerald-500"></i> ${post.registration.organizer}</span>` : ''}
-                            </div>
-                            ${post.registration.link ? 
-                                `<a href="${post.registration.link}" target="_blank" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl text-sm shadow-sm transition flex items-center justify-center gap-2">Daftar / Maklumat Lanjut <i data-lucide="external-link" class="w-4 h-4"></i></a>` 
-                                : `<button class="w-full py-2.5 bg-slate-200 text-slate-500 cursor-not-allowed font-medium rounded-xl text-sm transition flex items-center justify-center gap-2">Tiada Pautan Pendaftaran</button>`
-                            }
-                        </div>
-                    </div>`;
+                extraContent = `<div class="mt-3 mb-4 rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-bg)]">${postersHtml}<div class="p-4"><h4 class="font-display font-bold text-lg leading-tight mb-2" style="color:var(--color-ink)">${post.registration.title}</h4><div class="flex flex-col gap-1.5 text-sm font-medium mb-4" style="color:var(--color-ink-muted)"><span class="flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4 text-brand"></i> ${post.registration.date}</span>${post.registration.organizer ? `<span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4" style="color:var(--color-accent)"></i> ${post.registration.organizer}</span>` : ''}</div>${post.registration.link ? `<a href="${post.registration.link}" target="_blank" class="w-full py-2.5 btn-primary text-white font-medium rounded-xl text-sm shadow-sm transition flex items-center justify-center gap-2">Daftar / Maklumat Lanjut <i data-lucide="external-link" class="w-4 h-4"></i></a>` : `<button class="w-full py-2.5 bg-slate-200 text-slate-500 cursor-not-allowed font-medium rounded-xl text-sm transition flex items-center justify-center gap-2">Tiada Pautan Pendaftaran</button>`}</div></div>`;
             }
 
             return `
-                <div id="post-${post.id}" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-4 transition-all duration-300">
+                <div id="post-${post.id}" class="bg-white rounded-2xl shadow-sm border border-[var(--color-border)] overflow-hidden mb-4 transition-all duration-300">
                     <div class="p-4">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-3">
-                                <img src="${avatar}" class="w-10 h-10 rounded-full border border-slate-200 bg-slate-50 object-cover" />
+                                <img src="${avatar}" class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-slate-50 object-cover" />
                                 <div>
-                                    <h3 class="font-bold text-slate-800 text-sm">${post.author_name}</h3>
-                                    <div class="flex items-center gap-2 text-xs text-slate-500">
-                                        <span>${post.time}</span>
-                                        <span>•</span>
-                                        <span class="px-1.5 py-0.5 rounded ${tagColor}">${tagLabel}</span>
-                                    </div>
+                                    <h3 class="font-semibold text-sm" style="color:var(--color-ink)">${post.author_name}</h3>
+                                    <div class="flex items-center gap-2 text-xs" style="color:var(--color-ink-muted)"><span>${post.time}</span><span>•</span><span class="px-1.5 py-0.5 rounded ${tagColor}">${tagLabel}</span></div>
                                 </div>
                             </div>
-                            <!-- Menu Tiga Titik -->
                             <div class="relative">
-                                <button onclick="toggleMenu('${post.id}')" class="text-slate-400 hover:bg-slate-100 p-1.5 rounded-full transition"><i data-lucide="more-horizontal" class="w-5 h-5"></i></button>
-                                <div id="post-menu-${post.id}" class="hidden absolute right-0 mt-1 w-36 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-10">
-                                    <button onclick="editPost('${post.id}')" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> Edit</button>
-                                    <button class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i data-lucide="share" class="w-4 h-4"></i> Kongsi</button>
+                                <button onclick="toggleMenu('${post.id}')" class="p-1.5 rounded-full transition hover:bg-slate-100" style="color:var(--color-ink-muted)"><i data-lucide="more-horizontal" class="w-5 h-5"></i></button>
+                                <div id="post-menu-${post.id}" class="hidden absolute right-0 mt-1 w-36 bg-white border border-[var(--color-border)] rounded-lg shadow-lg py-1 z-10">
+                                    <button onclick="editPost('${post.id}')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2" style="color:var(--color-ink)"><i data-lucide="edit-3" class="w-4 h-4"></i> Edit</button>
+                                    <button class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2" style="color:var(--color-ink)"><i data-lucide="share" class="w-4 h-4"></i> Kongsi</button>
                                     <button onclick="deletePost('${post.id}')" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"><i data-lucide="trash-2" class="w-4 h-4"></i> Padam</button>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Paparan Teks Biasa -->
-                        <div id="post-view-${post.id}">
-                            <p class="text-slate-700 whitespace-pre-wrap" id="post-text-${post.id}">${post.content}</p>
-                        </div>
-                        
-                        <!-- Paparan Mod Suntingan (Edit) -->
+                        <div id="post-view-${post.id}"><p class="whitespace-pre-wrap" style="color:var(--color-ink)" id="post-text-${post.id}">${post.content}</p></div>
                         <div id="post-edit-${post.id}" class="hidden mt-2 mb-3">
-                            <textarea id="edit-input-${post.id}" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition resize-none min-h-[80px]">${post.content}</textarea>
+                            <textarea id="edit-input-${post.id}" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--color-primary)] focus:bg-white transition resize-none min-h-[80px]">${post.content}</textarea>
                             <div class="flex justify-end gap-2 mt-2">
-                                <button onclick="cancelEdit('${post.id}')" class="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition">Batal</button>
-                                <button onclick="saveEdit('${post.id}')" class="px-4 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition">Simpan</button>
+                                <button onclick="cancelEdit('${post.id}')" class="px-4 py-1.5 text-xs font-medium hover:bg-slate-200 rounded-lg transition" style="color:var(--color-ink-muted)">Batal</button>
+                                <button onclick="saveEdit('${post.id}')" class="px-4 py-1.5 text-xs font-medium text-white btn-primary rounded-lg shadow-sm transition">Simpan</button>
                             </div>
                         </div>
-
                         ${extraContent}
                     </div>
-                    <div class="px-4 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-slate-500">
-                        <button id="btn-like-${post.id}" onclick="toggleLike('${post.id}')" class="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-slate-200 rounded-lg transition text-sm font-medium">
-                            <i data-lucide="thumbs-up" class="w-4 h-4"></i> <span id="like-count-${post.id}">${Math.floor(Math.random() * 20) + 1}</span> Suka
-                        </button>
-                        <button onclick="toggleComment('${post.id}')" class="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-slate-200 rounded-lg transition text-sm font-medium">
-                            <i data-lucide="message-square" class="w-4 h-4"></i> Komen
-                        </button>
+                    <div class="px-4 py-2 bg-[var(--color-bg)] border-t border-[var(--color-border)] flex items-center justify-between" style="color:var(--color-ink-muted)">
+                        <button id="btn-like-${post.id}" onclick="toggleLike('${post.id}')" class="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-white rounded-lg transition text-sm font-medium"><i data-lucide="thumbs-up" class="w-4 h-4"></i> <span id="like-count-${post.id}">${Math.floor(Math.random() * 20) + 1}</span> Suka</button>
+                        <button onclick="toggleComment('${post.id}')" class="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-white rounded-lg transition text-sm font-medium"><i data-lucide="message-square" class="w-4 h-4"></i> Komen</button>
                     </div>
-                    
-                    <!-- Ruangan Komen (Tersembunyi secara lalai) -->
-                    <div id="comment-section-${post.id}" class="hidden bg-slate-50 border-t border-slate-100 p-4">
+                    <div id="comment-section-${post.id}" class="hidden bg-[var(--color-bg)] border-t border-[var(--color-border)] p-4">
                         <div class="flex gap-2 mb-3">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" class="w-8 h-8 rounded-full border border-slate-300 bg-white" />
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" class="w-8 h-8 rounded-full border border-[var(--color-border)] bg-white" />
                             <div class="flex-1 flex">
-                                <input type="text" id="comment-input-${post.id}" placeholder="Tulis komen anda..." class="flex-1 bg-white border border-slate-300 rounded-l-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500" />
-                                <button onclick="submitComment('${post.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-r-lg transition text-sm font-medium">Hantar</button>
+                                <input type="text" id="comment-input-${post.id}" placeholder="Tulis komen anda..." class="flex-1 bg-white border border-[var(--color-border)] rounded-l-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--color-primary)]" />
+                                <button onclick="submitComment('${post.id}')" class="btn-primary text-white px-3 py-2 rounded-r-lg transition text-sm font-medium">Hantar</button>
                             </div>
                         </div>
-                        <!-- Senarai Komen -->
                         <div id="comments-list-${post.id}" class="space-y-3 pl-10 text-sm">
-                            <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm">
-                                <span class="font-bold text-slate-700 block text-xs mb-0.5">Ahli Komuniti</span>
-                                <span class="text-slate-600">Maklumat yang sangat bermanfaat, terima kasih!</span>
-                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-[var(--color-border)] shadow-sm"><span class="font-bold block text-xs mb-0.5" style="color:var(--color-ink)">Ahli Komuniti</span><span style="color:var(--color-ink-muted)">Maklumat yang sangat bermanfaat, terima kasih!</span></div>
                         </div>
                     </div>
-                </div>
-            `;
+                </div>`;
         }
 
-        // --- LOGIK BUTANG INTERAKTIF (SUKA, KOMEN, MENU) ---
-        window.toggleMenu = function(postId) {
-            const menu = document.getElementById(`post-menu-${postId}`);
-            menu.classList.toggle('hidden');
-        };
-
-        // Modal Khas Untuk Pengesahan Padam
+        window.toggleMenu = function(postId) { document.getElementById(`post-menu-${postId}`).classList.toggle('hidden'); };
         window.showConfirmModal = function(onConfirm) {
             document.getElementById('custom-modal').classList.remove('hidden');
             const confirmBtn = document.getElementById('modal-confirm-btn');
-            
-            // Buang event listener lama untuk elak padam pos yang salah
             confirmBtn.replaceWith(confirmBtn.cloneNode(true));
-            const newConfirmBtn = document.getElementById('modal-confirm-btn');
-            
-            newConfirmBtn.addEventListener('click', function() {
-                onConfirm();
-                closeModal();
-            });
+            document.getElementById('modal-confirm-btn').addEventListener('click', function() { onConfirm(); closeModal(); });
         };
-
-        window.closeModal = function() {
-            document.getElementById('custom-modal').classList.add('hidden');
-        };
-
+        window.closeModal = function() { document.getElementById('custom-modal').classList.add('hidden'); };
         window.deletePost = function(postId) {
-            toggleMenu(postId); // Tutup menu
-            
+            toggleMenu(postId);
             showConfirmModal(() => {
                 const postElement = document.getElementById(`post-${postId}`);
-                if(postElement) {
-                    postElement.classList.add('opacity-0', 'scale-95'); // Animasi hilang
-                    setTimeout(() => postElement.remove(), 300); // Padam dari UI selepas 0.3 saat
-                }
+                if (postElement) { postElement.classList.add('opacity-0', 'scale-95'); setTimeout(() => postElement.remove(), 300); }
             });
         };
-
-        // Fungsi Suntingan (Edit)
         window.editPost = function(postId) {
-            toggleMenu(postId); // Tutup menu
+            toggleMenu(postId);
             document.getElementById(`post-view-${postId}`).classList.add('hidden');
             document.getElementById(`post-edit-${postId}`).classList.remove('hidden');
-            document.getElementById(`edit-input-${postId}`).focus(); // Auto fokus kotak taip
+            document.getElementById(`edit-input-${postId}`).focus();
         };
-
         window.cancelEdit = function(postId) {
             document.getElementById(`post-view-${postId}`).classList.remove('hidden');
             document.getElementById(`post-edit-${postId}`).classList.add('hidden');
-            // Kembalikan teks asal jika batal
             document.getElementById(`edit-input-${postId}`).value = document.getElementById(`post-text-${postId}`).innerText;
         };
-
         window.saveEdit = function(postId) {
             const newText = document.getElementById(`edit-input-${postId}`).value.trim();
-            if(!newText) return;
-
-            // Kemas kini DOM (paparan html)
+            if (!newText) return;
             document.getElementById(`post-text-${postId}`).innerText = newText;
-            
-            // Tutup mod suntingan
             document.getElementById(`post-view-${postId}`).classList.remove('hidden');
             document.getElementById(`post-edit-${postId}`).classList.add('hidden');
-            
-            // Update Array Mock Data supaya tak hilang bila render semula
-            if(!isFirebaseConfigured && mockPosts) {
+            if (!isFirebaseConfigured && mockPosts) {
                 const postIndex = mockPosts.findIndex(p => p.id == postId);
-                if(postIndex > -1) mockPosts[postIndex].content = newText;
+                if (postIndex > -1) mockPosts[postIndex].content = newText;
             }
         };
-
         window.toggleLike = function(postId) {
             const btn = document.getElementById(`btn-like-${postId}`);
             const countSpan = document.getElementById(`like-count-${postId}`);
-            
-            // Logik togol Suka
-            if (btn.classList.contains('text-blue-600')) {
-                btn.classList.remove('text-blue-600', 'bg-blue-50');
-                countSpan.innerText = parseInt(countSpan.innerText) - 1;
+            if (btn.dataset.liked === '1') {
+                btn.dataset.liked = '0'; btn.style.color = ''; countSpan.innerText = parseInt(countSpan.innerText) - 1;
             } else {
-                btn.classList.add('text-blue-600', 'bg-blue-50');
-                countSpan.innerText = parseInt(countSpan.innerText) + 1;
+                btn.dataset.liked = '1'; btn.style.color = 'var(--color-primary)'; countSpan.innerText = parseInt(countSpan.innerText) + 1;
             }
         };
-
-        window.toggleComment = function(postId) {
-            const section = document.getElementById(`comment-section-${postId}`);
-            section.classList.toggle('hidden');
-        };
-
+        window.toggleComment = function(postId) { document.getElementById(`comment-section-${postId}`).classList.toggle('hidden'); };
         window.submitComment = function(postId) {
             const input = document.getElementById(`comment-input-${postId}`);
             const text = input.value.trim();
             if (!text) return;
-
             const list = document.getElementById(`comments-list-${postId}`);
-            
-            // Tambah komen baru ke paparan
-            const newCommentHTML = `
-                <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm animate-pulse">
-                    <span class="font-bold text-blue-600 block text-xs mb-0.5">Anda</span>
-                    <span class="text-slate-600">${text}</span>
-                </div>
-            `;
-            
-            list.insertAdjacentHTML('beforeend', newCommentHTML);
-            
-            // Hentikan animasi nadi selepas 1 saat
-            setTimeout(() => {
-                list.lastElementChild.classList.remove('animate-pulse');
-            }, 1000);
-
-            input.value = ''; // Kosongkan input
+            list.insertAdjacentHTML('beforeend', `<div class="bg-white p-2.5 rounded-lg border border-[var(--color-border)] shadow-sm animate-pulse"><span class="font-bold block text-xs mb-0.5" style="color:var(--color-primary)">Anda</span><span style="color:var(--color-ink-muted)">${text}</span></div>`);
+            setTimeout(() => { list.lastElementChild.classList.remove('animate-pulse'); }, 1000);
+            input.value = '';
         };
 
-        // --- 5. LOGIK FIREBASE & SIMULASI ---
+        let mockPosts;
         if (isFirebaseConfigured) {
-            const app = initializeApp(firebaseConfig);
-            db = getDatabase(app);
-            postsRef = ref(db, 'posts');
-
             onValue(postsRef, (snapshot) => {
                 loadingSpinner.style.display = 'none';
-                feedContainer.innerHTML = ''; 
+                feedContainer.innerHTML = '';
                 const data = snapshot.val();
                 if (data) {
-                    const postsArray = Object.keys(data).map(key => ({ id: key, ...data[key] })).reverse();
-                    postsArray.forEach(post => { feedContainer.innerHTML += createPostHTML(post); });
+                    Object.keys(data).map(key => ({ id: key, ...data[key] })).reverse().forEach(post => { feedContainer.innerHTML += createPostHTML(post); });
                 } else {
-                    feedContainer.innerHTML = '<div class="text-center py-10 bg-white rounded-xl border border-slate-200"><p class="text-slate-500 font-medium">Belum ada hebahan.</p></div>';
+                    feedContainer.innerHTML = '<div class="text-center py-10 bg-white rounded-xl border border-[var(--color-border)]"><p class="font-medium" style="color:var(--color-ink-muted)">Belum ada hebahan.</p></div>';
                 }
                 lucide.createIcons();
             });
         } else {
-            // Simulasi Data Mock Lengkap
-            loadingSpinner.style.display = 'none';
-            let mockPosts = [
+            mockPosts = [
                 { id: 1, author_name: "Majlis Daerah Subis", content: "Terima kasih kepada semua yang sudi hadir ke acara sukan air kelolaan kami semalam. Berikut adalah keputusan rasmi yang ditunggu-tunggu!", time: "2 jam yang lalu", tag: "sukan", type: "registration", registration: { title: "Karnival Sukan Air Bekenu 2026", date: "27 Julai 2026", organizer: "Majlis Daerah Subis", link: "https://mdsubis.gov.my/sukan-air", posterHebahan: "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop", posterKeputusan: "https://images.unsplash.com/photo-1578269174936-2709b6aeb913?q=80&w=800&auto=format&fit=crop" }, avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=subis&backgroundColor=0284c7" },
                 { id: 2, author_name: "Cikgu Salmah", content: "Pilih aktiviti kegemaran anda untuk karnival hujung tahun ini. Undian tertinggi akan mendapat peruntukan lebih besar!", time: "5 jam yang lalu", tag: "kokurikulum", type: "poll", poll: { options: [{ text: "Pertandingan Memasak", votes: 45 }, { text: "Sukaneka Air", votes: 89 }, { text: "E-Sukan (Mobile)", votes: 120 }], totalVotes: 254 }, avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Salmah" }
             ];
-            
-            function renderMockPosts() {
-                feedContainer.innerHTML = '';
-                mockPosts.forEach(post => { feedContainer.innerHTML += createPostHTML(post); });
-                lucide.createIcons();
-            }
+            function renderMockPosts() { feedContainer.innerHTML = ''; mockPosts.forEach(post => { feedContainer.innerHTML += createPostHTML(post); }); lucide.createIcons(); }
+            loadingSpinner.style.display = 'none';
             renderMockPosts();
-
-            window.addMockPost = function(newPostData) {
-                mockPosts.unshift({ id: Date.now(), ...newPostData });
-                renderMockPosts();
-            }
+            window.addMockPost = function(newPostData) { mockPosts.unshift({ id: Date.now(), ...newPostData }); renderMockPosts(); };
         }
 
-        // --- 6. PENGHANTARAN BORANG ---
         postForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (!window.currentUser) { window.openAuthModal('login'); return; }
             const content = document.getElementById('post-input').value.trim();
             if (!content) return;
-
-            submitBtn.innerHTML = 'Menyimpan...';
-            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Menyimpan...'; submitBtn.disabled = true;
 
             const newPostData = {
-                author_name: "Pengguna Vercel",
-                content: content,
-                time: "Baru sahaja",
-                avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin",
+                author_name: window.currentUser.fullName,
+                author_ic: window.currentUser.ic,
+                content: content, time: "Baru sahaja",
+                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(window.currentUser.ic)}`,
                 tag: document.getElementById('post-tag').value,
-                type: window.currentComposerType // dari logik global
+                type: window.currentComposerType
             };
 
-            // Tambah data spesifik mengikut jenis tab (Poll/Registration)
             if (window.currentComposerType === 'poll') {
-                newPostData.poll = {
-                    totalVotes: 0,
-                    options: [
-                        { text: document.getElementById('poll-opt-1').value || "Pilihan 1", votes: 0 },
-                        { text: document.getElementById('poll-opt-2').value || "Pilihan 2", votes: 0 }
-                    ]
-                };
+                newPostData.poll = { totalVotes: 0, options: [
+                    { text: document.getElementById('poll-opt-1').value || "Pilihan 1", votes: 0 },
+                    { text: document.getElementById('poll-opt-2').value || "Pilihan 2", votes: 0 }
+                ] };
             } else if (window.currentComposerType === 'registration') {
-                // Simulasi gambar placeholder jika fail dipilih
                 const hebahanInput = document.getElementById('reg-poster-hebahan');
                 const keputusanInput = document.getElementById('reg-poster-keputusan');
-                const simHebahan = hebahanInput.files.length > 0 ? "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=800&auto=format&fit=crop" : null;
-                const simKeputusan = keputusanInput.files.length > 0 ? "https://images.unsplash.com/photo-1578269174936-2709b6aeb913?q=80&w=800&auto=format&fit=crop" : null;
-
                 newPostData.registration = {
                     title: document.getElementById('reg-title').value || "Acara Baharu",
                     date: document.getElementById('reg-date').value || "Akan Diumumkan",
                     organizer: document.getElementById('reg-organizer').value || "",
                     link: document.getElementById('reg-link').value || "",
-                    posterHebahan: simHebahan,
-                    posterKeputusan: simKeputusan
+                    posterHebahan: hebahanInput.files.length > 0 ? "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=800&auto=format&fit=crop" : null,
+                    posterKeputusan: keputusanInput.files.length > 0 ? "https://images.unsplash.com/photo-1578269174936-2709b6aeb913?q=80&w=800&auto=format&fit=crop" : null
                 };
             }
 
             if (isFirebaseConfigured) {
-                try {
-                    await set(push(postsRef), newPostData);
-                } catch (error) {
-                    console.error("Ralat Firebase:", error);
-                    alert("Gagal menghantar hebahan.");
-                }
-            } else {
-                window.addMockPost(newPostData);
-            }
+                try { await set(push(postsRef), newPostData); } catch (error) { console.error("Ralat Firebase:", error); alert("Gagal menghantar hebahan."); }
+            } else { window.addMockPost(newPostData); }
 
-            // Reset borang
             document.getElementById('post-input').value = '';
-            document.getElementById('reg-title').value = '';
-            document.getElementById('reg-date').value = '';
-            document.getElementById('reg-organizer').value = '';
-            document.getElementById('reg-link').value = '';
-            document.getElementById('reg-poster-hebahan').value = '';
-            document.getElementById('reg-poster-keputusan').value = '';
-            document.getElementById('poll-opt-1').value = '';
-            document.getElementById('poll-opt-2').value = '';
+            document.getElementById('reg-title').value = ''; document.getElementById('reg-date').value = '';
+            document.getElementById('reg-organizer').value = ''; document.getElementById('reg-link').value = '';
+            document.getElementById('reg-poster-hebahan').value = ''; document.getElementById('reg-poster-keputusan').value = '';
+            document.getElementById('poll-opt-1').value = ''; document.getElementById('poll-opt-2').value = '';
             window.switchTab('normal');
-            
-            submitBtn.innerHTML = 'Hebahkan';
-            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Hebahkan'; submitBtn.disabled = false;
         });
 
-        // Initialize Icons
         lucide.createIcons();
     </script>
 </body>
