@@ -75,9 +75,22 @@
                             <input type="text" id="reg-title" placeholder="Tajuk Acara (cth: Sukan Tahunan)" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
                             <input type="text" id="reg-date" placeholder="Tarikh (cth: 12 Nov 2026)" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
                         </div>
+                        <div>
+                            <input type="text" id="reg-organizer" placeholder="Nama Pengelola (cth: Pejabat Pendidikan Daerah Subis)" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-slate-200">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Muat Naik Poster Hebahan</label>
+                                <input type="file" id="reg-poster-hebahan" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition cursor-pointer" />
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Muat Naik Poster Keputusan</label>
+                                <input type="file" id="reg-poster-keputusan" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 transition cursor-pointer" />
+                            </div>
+                        </div>
                         <div class="flex items-center gap-2 mt-2">
                             <i data-lucide="link" class="w-4 h-4 text-slate-400"></i>
-                            <input type="url" id="reg-link" placeholder="URL Pendaftaran (cth: Google Forms)" class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition text-slate-700" />
+                            <input type="url" id="reg-link" placeholder="URL Pendaftaran Luar (cth: Google Forms)" class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition text-slate-700" />
                         </div>
                     </div>
 
@@ -111,7 +124,7 @@
                     <i data-lucide="chevron-left" class="w-5 h-5"></i>
                 </button>
 
-                <div id="events-carousel" class="flex overflow-x-auto gap-4 pb-4 hide-scrollbar transition-all cursor-grab snap-x scroll-smooth" style="scrollbar-width: none; -ms-overflow-style: none;">
+                <div id="events-carousel" class="flex overflow-x-auto gap-4 pb-4 hide-scrollbar transition-all cursor-grab snap-x snap-mandatory scroll-smooth" style="scrollbar-width: none; -ms-overflow-style: none;">
                     <!-- Kad Kecerunan Acara akan dimuatkan di sini oleh JavaScript -->
                 </div>
 
@@ -130,6 +143,21 @@
         </div>
 
     </main>
+
+    <!-- Modal Pengesahan Padam (Custom Confirm Box) -->
+    <div id="custom-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 transition-opacity">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl transform scale-100 transition-transform">
+            <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+            </div>
+            <h3 class="font-bold text-lg text-slate-800 mb-1" id="modal-title">Padam Hebahan?</h3>
+            <p class="text-slate-500 text-sm mb-6" id="modal-message">Adakah anda pasti? Tindakan ini tidak boleh dipulihkan semula.</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Batal</button>
+                <button id="modal-confirm-btn" class="px-5 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm transition">Ya, Padam</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // --- 1. LOGIK UI: TAB KOMPOSER ---
@@ -170,8 +198,24 @@
 
         // Tambahan Fungsi Butang Anak Panah
         window.scrollCarousel = function(direction) {
-            const scrollAmount = 300; // Jarak leretan 300px
-            carousel.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+            const scrollAmount = carousel.clientWidth; 
+            const maxScroll = carousel.scrollWidth - carousel.clientWidth;
+            
+            if (direction === 1) { // Kanan
+                // Jika sudah di hujung, kembali ke awal
+                if (carousel.scrollLeft >= maxScroll - 10) {
+                    carousel.scrollTo({ left: 0, behavior: 'smooth' }); 
+                } else {
+                    carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+                }
+            } else { // Kiri
+                // Jika di awal, pergi ke hujung
+                if (carousel.scrollLeft <= 10) {
+                    carousel.scrollTo({ left: maxScroll, behavior: 'smooth' }); 
+                } else {
+                    carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+                }
+            }
         };
 
         carousel.addEventListener('mousedown', (e) => {
@@ -209,13 +253,19 @@
 
         function renderCarousel() {
             carousel.innerHTML = '';
-            eventsData.forEach(ev => {
+            const total = eventsData.length;
+            eventsData.forEach((ev, index) => {
                 carousel.innerHTML += `
-                    <div class="min-w-[280px] max-w-[280px] snap-center bg-gradient-to-br ${ev.theme.bg} rounded-2xl p-5 text-white shadow-lg ${ev.theme.shadow} flex flex-col justify-between relative overflow-hidden group select-none">
+                    <div class="w-full shrink-0 snap-center bg-gradient-to-br ${ev.theme.bg} rounded-2xl p-6 text-white shadow-lg ${ev.theme.shadow} flex flex-col justify-between relative overflow-hidden group select-none">
                         <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10"></div>
                         <div>
-                            <div class="flex items-center gap-1 ${ev.theme.light} text-xs font-medium mb-2 uppercase tracking-wider">
-                                <i data-lucide="calendar" class="w-3 h-3"></i> ${ev.date}
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-1 ${ev.theme.light} text-xs font-medium uppercase tracking-wider">
+                                    <i data-lucide="calendar" class="w-3 h-3"></i> ${ev.date}
+                                </div>
+                                <div class="bg-black/20 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-widest backdrop-blur-sm shadow-sm">
+                                    ${index + 1} / ${total}
+                                </div>
                             </div>
                             <h4 class="font-bold text-lg leading-tight mb-1">${ev.title}</h4>
                             <p class="${ev.theme.light} text-xs line-clamp-1">${ev.organizer}</p>
@@ -284,26 +334,45 @@
 
             // Paparan Khas Jika Jenis "Registration" (Pendaftaran)
             if (post.type === 'registration' && post.registration) {
-                const posterImg = post.registration.poster || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop";
+                let postersHtml = '';
+                
+                // Menjana blok gambar jika ada salah satu poster
+                if (post.registration.posterHebahan || post.registration.posterKeputusan) {
+                    postersHtml = `<div class="grid ${post.registration.posterHebahan && post.registration.posterKeputusan ? 'grid-cols-2' : 'grid-cols-1'} gap-2 border-b border-slate-200 bg-slate-100 p-2">`;
+                    
+                    if (post.registration.posterHebahan) {
+                        postersHtml += `<div class="relative"><span class="absolute top-2 left-2 bg-blue-600 text-white text-[10px] px-2.5 py-0.5 rounded shadow font-bold tracking-wider">HEBAHAN</span><img src="${post.registration.posterHebahan}" class="w-full h-40 object-cover rounded shadow-sm border border-slate-200" /></div>`;
+                    }
+                    if (post.registration.posterKeputusan) {
+                        postersHtml += `<div class="relative"><span class="absolute top-2 left-2 bg-orange-500 text-white text-[10px] px-2.5 py-0.5 rounded shadow font-bold tracking-wider">KEPUTUSAN</span><img src="${post.registration.posterKeputusan}" class="w-full h-40 object-cover rounded shadow-sm border border-slate-200" /></div>`;
+                    }
+                    postersHtml += `</div>`;
+                } else {
+                    // Poster lalai jika tiada gambar dimuat naik
+                    postersHtml = `<div class="relative w-full h-32 bg-slate-100 border-b border-slate-200 flex items-center justify-center">
+                        <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop" alt="Poster Lalai" class="max-h-full max-w-full object-cover opacity-40 grayscale" />
+                    </div>`;
+                }
+
                 extraContent = `
                     <div class="mt-3 mb-4 rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
-                        <div class="relative w-full h-48 bg-slate-100 border-b border-slate-200 flex items-center justify-center">
-                            <img src="${posterImg}" alt="Poster Hebahan" class="max-h-full max-w-full object-cover" />
-                        </div>
+                        ${postersHtml}
                         <div class="p-4">
                             <h4 class="font-bold text-slate-800 text-lg leading-tight mb-2">${post.registration.title}</h4>
-                            <div class="flex items-center gap-3 text-sm text-slate-500 font-medium mb-3">
-                                <span class="flex items-center gap-1 text-blue-600"><i data-lucide="calendar" class="w-4 h-4"></i> ${post.registration.date}</span>
+                            <div class="flex flex-col gap-1.5 text-sm text-slate-600 font-medium mb-4">
+                                <span class="flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4 text-blue-500"></i> ${post.registration.date}</span>
+                                ${post.registration.organizer ? `<span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4 text-emerald-500"></i> ${post.registration.organizer}</span>` : ''}
                             </div>
-                            <button class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl text-sm shadow-sm transition flex items-center justify-center gap-2">
-                                Daftar Sekarang
-                            </button>
+                            ${post.registration.link ? 
+                                `<a href="${post.registration.link}" target="_blank" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl text-sm shadow-sm transition flex items-center justify-center gap-2">Daftar / Maklumat Lanjut <i data-lucide="external-link" class="w-4 h-4"></i></a>` 
+                                : `<button class="w-full py-2.5 bg-slate-200 text-slate-500 cursor-not-allowed font-medium rounded-xl text-sm transition flex items-center justify-center gap-2">Tiada Pautan Pendaftaran</button>`
+                            }
                         </div>
                     </div>`;
             }
 
             return `
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-4">
+                <div id="post-${post.id}" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-4 transition-all duration-300">
                     <div class="p-4">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-3">
@@ -321,12 +390,27 @@
                             <div class="relative">
                                 <button onclick="toggleMenu('${post.id}')" class="text-slate-400 hover:bg-slate-100 p-1.5 rounded-full transition"><i data-lucide="more-horizontal" class="w-5 h-5"></i></button>
                                 <div id="post-menu-${post.id}" class="hidden absolute right-0 mt-1 w-36 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-10">
+                                    <button onclick="editPost('${post.id}')" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i> Edit</button>
                                     <button class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"><i data-lucide="share" class="w-4 h-4"></i> Kongsi</button>
-                                    <button class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Laporkan</button>
+                                    <button onclick="deletePost('${post.id}')" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"><i data-lucide="trash-2" class="w-4 h-4"></i> Padam</button>
                                 </div>
                             </div>
                         </div>
-                        <p class="text-slate-700 whitespace-pre-wrap">${post.content}</p>
+                        
+                        <!-- Paparan Teks Biasa -->
+                        <div id="post-view-${post.id}">
+                            <p class="text-slate-700 whitespace-pre-wrap" id="post-text-${post.id}">${post.content}</p>
+                        </div>
+                        
+                        <!-- Paparan Mod Suntingan (Edit) -->
+                        <div id="post-edit-${post.id}" class="hidden mt-2 mb-3">
+                            <textarea id="edit-input-${post.id}" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition resize-none min-h-[80px]">${post.content}</textarea>
+                            <div class="flex justify-end gap-2 mt-2">
+                                <button onclick="cancelEdit('${post.id}')" class="px-4 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition">Batal</button>
+                                <button onclick="saveEdit('${post.id}')" class="px-4 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition">Simpan</button>
+                            </div>
+                        </div>
+
                         ${extraContent}
                     </div>
                     <div class="px-4 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-slate-500">
@@ -363,6 +447,70 @@
         window.toggleMenu = function(postId) {
             const menu = document.getElementById(`post-menu-${postId}`);
             menu.classList.toggle('hidden');
+        };
+
+        // Modal Khas Untuk Pengesahan Padam
+        window.showConfirmModal = function(onConfirm) {
+            document.getElementById('custom-modal').classList.remove('hidden');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            
+            // Buang event listener lama untuk elak padam pos yang salah
+            confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+            const newConfirmBtn = document.getElementById('modal-confirm-btn');
+            
+            newConfirmBtn.addEventListener('click', function() {
+                onConfirm();
+                closeModal();
+            });
+        };
+
+        window.closeModal = function() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        };
+
+        window.deletePost = function(postId) {
+            toggleMenu(postId); // Tutup menu
+            
+            showConfirmModal(() => {
+                const postElement = document.getElementById(`post-${postId}`);
+                if(postElement) {
+                    postElement.classList.add('opacity-0', 'scale-95'); // Animasi hilang
+                    setTimeout(() => postElement.remove(), 300); // Padam dari UI selepas 0.3 saat
+                }
+            });
+        };
+
+        // Fungsi Suntingan (Edit)
+        window.editPost = function(postId) {
+            toggleMenu(postId); // Tutup menu
+            document.getElementById(`post-view-${postId}`).classList.add('hidden');
+            document.getElementById(`post-edit-${postId}`).classList.remove('hidden');
+            document.getElementById(`edit-input-${postId}`).focus(); // Auto fokus kotak taip
+        };
+
+        window.cancelEdit = function(postId) {
+            document.getElementById(`post-view-${postId}`).classList.remove('hidden');
+            document.getElementById(`post-edit-${postId}`).classList.add('hidden');
+            // Kembalikan teks asal jika batal
+            document.getElementById(`edit-input-${postId}`).value = document.getElementById(`post-text-${postId}`).innerText;
+        };
+
+        window.saveEdit = function(postId) {
+            const newText = document.getElementById(`edit-input-${postId}`).value.trim();
+            if(!newText) return;
+
+            // Kemas kini DOM (paparan html)
+            document.getElementById(`post-text-${postId}`).innerText = newText;
+            
+            // Tutup mod suntingan
+            document.getElementById(`post-view-${postId}`).classList.remove('hidden');
+            document.getElementById(`post-edit-${postId}`).classList.add('hidden');
+            
+            // Update Array Mock Data supaya tak hilang bila render semula
+            if(!isFirebaseConfigured && mockPosts) {
+                const postIndex = mockPosts.findIndex(p => p.id == postId);
+                if(postIndex > -1) mockPosts[postIndex].content = newText;
+            }
         };
 
         window.toggleLike = function(postId) {
@@ -431,7 +579,7 @@
             // Simulasi Data Mock Lengkap
             loadingSpinner.style.display = 'none';
             let mockPosts = [
-                { id: 1, author_name: "Pusat Khidmat Parlimen Sibuti", content: "Pendaftaran bagi e-Sukan peringkat Parlimen kini dibuka! Jangan lepaskan peluang untuk memenangi hadiah terkumpul RM10,000.", time: "2 jam yang lalu", tag: "sukan", type: "registration", registration: { title: "Pertandingan E-Sukan Parlimen Sibuti", date: "2 September 2026", poster: "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop" }, avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=sibuti&backgroundColor=f59e0b" },
+                { id: 1, author_name: "Majlis Daerah Subis", content: "Terima kasih kepada semua yang sudi hadir ke acara sukan air kelolaan kami semalam. Berikut adalah keputusan rasmi yang ditunggu-tunggu!", time: "2 jam yang lalu", tag: "sukan", type: "registration", registration: { title: "Karnival Sukan Air Bekenu 2026", date: "27 Julai 2026", organizer: "Majlis Daerah Subis", link: "https://mdsubis.gov.my/sukan-air", posterHebahan: "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop", posterKeputusan: "https://images.unsplash.com/photo-1578269174936-2709b6aeb913?q=80&w=800&auto=format&fit=crop" }, avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=subis&backgroundColor=0284c7" },
                 { id: 2, author_name: "Cikgu Salmah", content: "Pilih aktiviti kegemaran anda untuk karnival hujung tahun ini. Undian tertinggi akan mendapat peruntukan lebih besar!", time: "5 jam yang lalu", tag: "kokurikulum", type: "poll", poll: { options: [{ text: "Pertandingan Memasak", votes: 45 }, { text: "Sukaneka Air", votes: 89 }, { text: "E-Sukan (Mobile)", votes: 120 }], totalVotes: 254 }, avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Salmah" }
             ];
             
@@ -476,10 +624,19 @@
                     ]
                 };
             } else if (window.currentComposerType === 'registration') {
+                // Simulasi gambar placeholder jika fail dipilih
+                const hebahanInput = document.getElementById('reg-poster-hebahan');
+                const keputusanInput = document.getElementById('reg-poster-keputusan');
+                const simHebahan = hebahanInput.files.length > 0 ? "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=800&auto=format&fit=crop" : null;
+                const simKeputusan = keputusanInput.files.length > 0 ? "https://images.unsplash.com/photo-1578269174936-2709b6aeb913?q=80&w=800&auto=format&fit=crop" : null;
+
                 newPostData.registration = {
                     title: document.getElementById('reg-title').value || "Acara Baharu",
                     date: document.getElementById('reg-date').value || "Akan Diumumkan",
-                    poster: null
+                    organizer: document.getElementById('reg-organizer').value || "",
+                    link: document.getElementById('reg-link').value || "",
+                    posterHebahan: simHebahan,
+                    posterKeputusan: simKeputusan
                 };
             }
 
@@ -498,6 +655,10 @@
             document.getElementById('post-input').value = '';
             document.getElementById('reg-title').value = '';
             document.getElementById('reg-date').value = '';
+            document.getElementById('reg-organizer').value = '';
+            document.getElementById('reg-link').value = '';
+            document.getElementById('reg-poster-hebahan').value = '';
+            document.getElementById('reg-poster-keputusan').value = '';
             document.getElementById('poll-opt-1').value = '';
             document.getElementById('poll-opt-2').value = '';
             window.switchTab('normal');
