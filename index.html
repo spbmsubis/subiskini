@@ -1,805 +1,949 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SubisKini - Papan Muka</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Papan Acara — Event Webapp</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Tailwind CDN (Fasa 1: guna CDN dulu untuk kelajuan setup. Boleh tukar ke compiled CSS masa production kalau perlu) -->
+<script src="https://cdn.tailwindcss.com"></script>
 
-    <style>
-        :root {
-            --color-bg: #F2F6F4;
-            --color-surface: #FFFFFF;
-            --color-ink: #16302E;
-            --color-ink-muted: #5B7370;
-            --color-primary: #0F5C5C;
-            --color-primary-dark: #0B4747;
-            --color-primary-soft: #E4F0EE;
-            --color-accent: #E8A33D;
-            --color-accent-soft: #FBEBCB;
-            --color-border: #DCE6E3;
-        }
-        body { font-family: 'Inter', sans-serif; background: var(--color-bg); color: var(--color-ink); }
-        .font-display { font-family: 'Sora', sans-serif; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+<!-- Fonts: Archivo Black untuk header gaya poster, Inter untuk body -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-        .tab-btn { color: var(--color-ink-muted); }
-        .tab-active {
-            color: var(--color-primary-dark) !important;
-            background-color: var(--color-surface) !important;
-            box-shadow: 0 1px 3px rgba(15,92,92,0.15);
-        }
+<!-- browser-image-compression: mampatkan poster ke WebP di browser sebelum upload (Fasa 3) -->
+<script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
 
-        .pinboard {
-            background-color: var(--color-primary);
-            background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
-            background-size: 14px 14px;
-            border-radius: 20px;
-        }
-        .pin-card { background: var(--color-surface); box-shadow: 0 10px 20px -6px rgba(11,71,71,0.35), 0 2px 6px rgba(11,71,71,0.15); }
-        .pin-card:nth-child(odd) { transform: rotate(-1.1deg); }
-        .pin-card:nth-child(even) { transform: rotate(1.1deg); }
-        .pin-card:hover { transform: rotate(0deg) translateY(-2px); transition: transform .2s ease; }
-        .pin-badge { background: var(--color-accent); box-shadow: 0 3px 6px rgba(0,0,0,0.25); }
+<!-- Firebase SDK (modular v10) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+    createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider,
+    signOut, updateProfile
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  import {
+    getDatabase, ref, set, get, update, child, push, remove, onValue
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-        .btn-primary { background: var(--color-primary); }
-        .btn-primary:hover { background: var(--color-primary-dark); }
-        .text-brand { color: var(--color-primary); }
-        .ring-brand:focus { outline: none; box-shadow: 0 0 0 2px var(--color-primary); border-color: var(--color-primary); }
+  const firebaseConfig = {
+    apiKey: "AIzaSyA5qxIh_0WamGXeGkJKlT_bQNMngt6KKzY",
+    authDomain: "subiskini.firebaseapp.com",
+    databaseURL: "https://subiskini-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "subiskini",
+    storageBucket: "subiskini.firebasestorage.app",
+    messagingSenderId: "757909395183",
+    appId: "1:757909395183:web:484340859108f1fe562d1a"
+  };
 
-        /* --- Kunci akses tetamu (belum log masuk) --- */
-        .locked-zone { position: relative; }
-        .is-guest .locked-zone .lock-overlay { display: flex; }
-        .lock-overlay {
-            display: none;
-            position: absolute; inset: 0; z-index: 20;
-            background: rgba(242,246,244,0.82);
-            backdrop-filter: blur(2px);
-            border-radius: inherit;
-            flex-direction: column; align-items: center; justify-content: center; text-align: center;
-            padding: 1rem;
-        }
-        .is-guest .locked-zone .zone-inner { pointer-events: none; user-select: none; filter: blur(1.5px); opacity: .6; }
-        .is-guest .pin-card button { pointer-events: none; opacity: .55; }
-    </style>
+  const CLOUDINARY_CONFIG = {
+    cloudName: "gxwqfzyw",
+    uploadPreset: "subiskini_preset"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  // Dedah ke global scope supaya <script> biasa di bawah boleh guna
+  window.__fb = {
+    auth, db, ref, set, get, update, child, push, remove, onValue,
+    onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+    signInWithPopup, GoogleAuthProvider, signOut, updateProfile
+  };
+  window.__cloudinary = CLOUDINARY_CONFIG;
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .font-poster { font-family: 'Archivo Black', sans-serif; }
+  /* Warna tema: papan kenyataan komuniti — navy gelap + amber accent */
+  :root {
+    --ink: #10202E;
+    --paper: #F7F5F0;
+    --amber: #E8A33D;
+    --line: #D8D3C7;
+  }
+  .bg-ink { background-color: var(--ink); }
+  .bg-paper { background-color: var(--paper); }
+  .text-amber-accent { color: var(--amber); }
+  .bg-amber-accent { background-color: var(--amber); }
+  .border-line { border-color: var(--line); }
+</style>
 </head>
-<body class="pb-20 is-guest">
 
-    <nav class="bg-white/90 backdrop-blur border-b border-[var(--color-border)] sticky top-0 z-40">
-        <div class="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="window.scrollTo(0,0)">
-                <div class="w-9 h-9 rounded-xl flex items-center justify-center btn-primary">
-                    <i data-lucide="pin" class="w-4 h-4 text-white"></i>
-                </div>
-                <span class="font-display font-extrabold text-lg tracking-tight text-brand">SubisKini</span>
-            </div>
+<body class="bg-paper text-[#10202E] min-h-screen flex flex-col">
 
-            <div id="nav-guest" class="flex items-center gap-2">
-                <button onclick="openAuthModal('login')" class="text-sm font-semibold px-4 py-2 rounded-full hover:bg-[var(--color-primary-soft)] transition" style="color:var(--color-primary-dark)">Log Masuk</button>
-                <button onclick="openAuthModal('register')" class="btn-primary text-white text-sm font-semibold px-4 py-2 rounded-full transition">Daftar Akaun</button>
-            </div>
+  <!-- ===================== NAV ===================== -->
+  <header class="bg-ink text-paper sticky top-0 z-40 border-b-4 border-amber-accent">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <h1 class="font-poster text-xl tracking-tight">PAPAN <span class="text-amber-accent">ACARA</span></h1>
 
-            <div id="nav-user" class="hidden items-center gap-2">
-                <div class="flex items-center gap-2 bg-[var(--color-primary-soft)] rounded-full py-1 pr-1 pl-1 border border-[var(--color-border)] relative cursor-pointer" onclick="toggleUserMenu()">
-                    <img id="nav-avatar" src="" class="w-8 h-8 rounded-full border border-white bg-white object-cover" />
-                    <span id="nav-username" class="text-sm font-semibold leading-tight pr-2" style="color:var(--color-primary-dark)"></span>
-                    <div id="user-menu" class="hidden absolute right-0 top-11 w-44 bg-white border border-[var(--color-border)] rounded-lg shadow-lg py-1 z-30 text-left">
-                        <div class="px-4 py-2 text-xs" style="color:var(--color-ink-muted)">
-                            <span id="user-menu-school"></span>
-                        </div>
-                        <button onclick="logoutUser()" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"><i data-lucide="log-out" class="w-4 h-4"></i> Log Keluar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <main class="max-w-2xl mx-auto pt-6 px-4">
-
-        <div class="mb-6 relative">
-            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <i data-lucide="search" class="h-4 w-4" style="color:var(--color-ink-muted)"></i>
-            </div>
-            <input type="text" id="search-input" class="block w-full pl-11 pr-4 py-3 border border-[var(--color-border)] rounded-full bg-white placeholder-[var(--color-ink-muted)] ring-brand sm:text-sm shadow-sm transition" placeholder="Cari program, sekolah, atau teks hebahan...">
-        </div>
-
-        <div class="locked-zone rounded-2xl mb-8">
-            <div class="zone-inner bg-white rounded-2xl shadow-sm border border-[var(--color-border)] overflow-hidden">
-                <div class="flex gap-1 p-1.5 bg-[var(--color-bg)] m-3 rounded-xl" id="composer-tabs">
-                    <button onclick="switchTab('normal')" id="tab-normal" class="tab-btn flex-1 py-2.5 rounded-lg text-sm font-semibold transition tab-active">Hebahan</button>
-                    <button onclick="switchTab('poll')" id="tab-poll" class="tab-btn flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> Undian</button>
-                    <button onclick="switchTab('registration')" id="tab-registration" class="tab-btn flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition"><i data-lucide="calendar" class="w-4 h-4"></i> Pendaftaran</button>
-                </div>
-
-                <div class="p-4 pt-1">
-                    <form id="post-form">
-                        <div class="flex gap-3 mb-4">
-                            <img id="composer-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tetamu" class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-slate-50" />
-                            <textarea id="post-input" placeholder="Apa yang ingin dihebahkan?" class="w-full bg-[var(--color-bg)] rounded-xl px-4 py-3 placeholder-[var(--color-ink-muted)] outline-none resize-none min-h-[100px] border border-[var(--color-border)] focus:border-[var(--color-primary)] focus:bg-white transition" required></textarea>
-                        </div>
-
-                        <div id="poll-container" class="hidden pl-13 pr-2 space-y-2 mb-4">
-                            <div class="flex gap-2">
-                                <input type="text" id="poll-opt-1" placeholder="Pilihan 1" class="flex-1 bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]" />
-                            </div>
-                            <div class="flex gap-2">
-                                <input type="text" id="poll-opt-2" placeholder="Pilihan 2" class="flex-1 bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]" />
-                            </div>
-                            <p class="text-xs mt-1" style="color:var(--color-ink-muted)">Ciri penuh undian disokong dalam integrasi pangkalan data.</p>
-                        </div>
-
-                        <div id="registration-container" class="hidden pl-13 pr-2 mb-4 space-y-3 rounded-xl border p-4" style="background:var(--color-primary-soft); border-color:var(--color-border)">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
-                                <input type="text" id="reg-title" placeholder="Tajuk Acara (cth: Sukan Tahunan)" class="bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]" />
-                                <input type="text" id="reg-date" placeholder="Tarikh (cth: 12 Nov 2026)" class="bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]" />
-                            </div>
-                            <div>
-                                <input type="text" id="reg-organizer" placeholder="Nama Pengelola (cth: Pejabat Pendidikan Daerah Subis)" class="w-full bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]" />
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-[var(--color-border)]">
-                                <div>
-                                    <label class="text-[10px] font-bold uppercase block mb-1" style="color:var(--color-ink-muted)">Muat Naik Poster Hebahan</label>
-                                    <input type="file" id="reg-poster-hebahan" accept="image/*" class="w-full text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[var(--color-primary-soft)] file:text-[var(--color-primary-dark)] hover:file:opacity-80 transition cursor-pointer" />
-                                </div>
-                                <div>
-                                    <label class="text-[10px] font-bold uppercase block mb-1" style="color:var(--color-ink-muted)">Muat Naik Poster Keputusan</label>
-                                    <input type="file" id="reg-poster-keputusan" accept="image/*" class="w-full text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[var(--color-accent-soft)] file:text-[#8A5A0F] hover:file:opacity-80 transition cursor-pointer" />
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2 mt-2">
-                                <i data-lucide="link" class="w-4 h-4" style="color:var(--color-ink-muted)"></i>
-                                <input type="url" id="reg-link" placeholder="URL Pendaftaran Luar (cth: Google Forms)" class="flex-1 bg-white border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)] transition" />
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-medium" style="color:var(--color-ink-muted)">Kategori:</span>
-                                <select id="post-tag" class="bg-[var(--color-bg)] border-none text-xs font-semibold py-1.5 px-3 rounded-full outline-none cursor-pointer" style="color:var(--color-ink)">
-                                    <option value="lain-lain">Lain-lain</option>
-                                    <option value="kokurikulum">Kokurikulum</option>
-                                    <option value="sukan">Sukan</option>
-                                    <option value="seni">Seni</option>
-                                </select>
-                            </div>
-                            <button type="submit" id="submit-btn" class="btn-primary text-white font-semibold py-2.5 px-6 rounded-full transition flex items-center gap-2 text-sm shadow-sm">
-                                Hebahkan
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            <div class="lock-overlay rounded-2xl">
-                <i data-lucide="lock" class="w-6 h-6 mb-2" style="color:var(--color-primary)"></i>
-                <p class="text-sm font-semibold mb-3" style="color:var(--color-ink)">Log masuk untuk menghebah, undi, suka atau komen</p>
-                <button onclick="openAuthModal('register')" class="btn-primary text-white text-sm font-semibold px-5 py-2 rounded-full">Daftar Akaun Percuma</button>
-            </div>
-        </div>
-
-        <div class="mb-8" id="highlight-section">
-            <div class="flex items-center justify-between mb-3 px-1">
-                <h3 class="font-display font-bold text-[var(--color-ink)] flex items-center gap-2">
-                    <i data-lucide="pin" class="w-4 h-4 text-brand"></i> Papan Kenyataan: Acara Akan Datang
-                </h3>
-                <span class="text-xs font-medium" style="color:var(--color-ink-muted)">Leret / anak panah <i data-lucide="chevron-right" class="w-3 h-3 inline"></i></span>
-            </div>
-
-            <div class="relative group pinboard p-4">
-                <button onclick="scrollCarousel(-1)" class="absolute left-1 top-1/2 -translate-y-1/2 z-20 bg-white p-2 rounded-full shadow-md hidden md:group-hover:flex items-center justify-center text-[var(--color-primary)] hover:opacity-80 transition">
-                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
-                </button>
-                <div id="events-carousel" class="flex overflow-x-auto gap-5 pb-2 hide-scrollbar cursor-grab snap-x snap-mandatory scroll-smooth" style="scrollbar-width: none; -ms-overflow-style: none;"></div>
-                <button onclick="scrollCarousel(1)" class="absolute right-1 top-1/2 -translate-y-1/2 z-20 bg-white p-2 rounded-full shadow-md hidden md:group-hover:flex items-center justify-center text-[var(--color-primary)] hover:opacity-80 transition">
-                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <p class="is-guest:block hidden text-xs text-center mt-2" style="color:var(--color-ink-muted)">Highlight sentiasa boleh dilihat tanpa akaun. Daftar untuk akses penuh hebahan.</p>
-        </div>
-
-        <div class="locked-zone rounded-2xl">
-            <div class="zone-inner space-y-4" id="feed-container">
-                <div class="flex justify-center py-10" id="loading-spinner">
-                    <div class="w-8 h-8 border-4 rounded-full animate-spin" style="border-color:var(--color-primary-soft); border-top-color:var(--color-primary)"></div>
-                </div>
-            </div>
-            <div class="lock-overlay rounded-2xl">
-                <i data-lucide="lock" class="w-6 h-6 mb-2" style="color:var(--color-primary)"></i>
-                <p class="text-sm font-semibold mb-3" style="color:var(--color-ink)">Log masuk untuk lihat hebahan penuh komuniti</p>
-                <button onclick="openAuthModal('login')" class="text-sm font-semibold px-5 py-2 rounded-full border" style="border-color:var(--color-primary); color:var(--color-primary-dark)">Log Masuk</button>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Modal Padam -->
-    <div id="custom-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-ink)]/40 backdrop-blur-sm p-4 transition-opacity">
-        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4">
-                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
-            </div>
-            <h3 class="font-display font-bold text-lg mb-1" id="modal-title">Padam Hebahan?</h3>
-            <p class="text-sm mb-6" style="color:var(--color-ink-muted)" id="modal-message">Adakah anda pasti? Tindakan ini tidak boleh dipulihkan semula.</p>
-            <div class="flex justify-end gap-3">
-                <button onclick="closeModal()" class="px-5 py-2.5 text-sm font-medium hover:bg-slate-100 rounded-xl transition" style="color:var(--color-ink-muted)">Batal</button>
-                <button id="modal-confirm-btn" class="px-5 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm transition">Ya, Padam</button>
-            </div>
-        </div>
+      <div id="navAuthArea" class="flex items-center gap-3">
+        <!-- Diisi secara dinamik oleh JS: sama ada butang Log Masuk, atau profil pengguna -->
+        <button id="btnOpenLogin"
+          class="bg-amber-accent text-ink font-semibold text-sm px-4 py-2 rounded-md hover:opacity-90 transition">
+          Log Masuk
+        </button>
+      </div>
     </div>
+  </header>
 
-    <!-- Modal Daftar / Log Masuk -->
-    <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-ink)]/40 backdrop-blur-sm p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="font-display font-bold text-lg" id="auth-modal-title">Daftar Akaun</h3>
-                <button onclick="closeAuthModal()" class="p-1.5 rounded-full hover:bg-slate-100" style="color:var(--color-ink-muted)"><i data-lucide="x" class="w-5 h-5"></i></button>
+  <!-- ===================== MAIN CONTENT ===================== -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-8">
+    <div id="statusBanner" class="hidden mb-6 rounded-lg border border-line bg-white px-4 py-3 text-sm"></div>
+
+    <!-- VIEW: FEED (default) -->
+    <section id="viewFeed">
+      <div id="highlightBanner" class="hidden mb-6">
+        <p class="font-poster text-sm text-ink/50 mb-2">ACARA AKAN DATANG</p>
+        <div id="highlightScroll" class="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1"></div>
+      </div>
+
+      <div class="flex items-center justify-between mb-5">
+        <p class="font-poster text-lg text-ink/70">FEED ACARA</p>
+        <button id="btnNewPost" class="hidden bg-ink text-paper text-sm font-semibold px-4 py-2 rounded-md hover:opacity-90 transition">
+          + Cipta Acara
+        </button>
+      </div>
+
+      <div id="feedEmpty" class="hidden border-2 border-dashed border-line rounded-xl p-10 text-center">
+        <p class="text-sm text-ink/50">Belum ada acara dicipta lagi. Jadi yang pertama!</p>
+      </div>
+
+      <div id="feedList" class="space-y-4"></div>
+    </section>
+
+    <!-- VIEW: SINGLE POST (#post/postId) -->
+    <section id="viewPost" class="hidden">
+      <a href="#" id="btnBackToFeed" class="text-xs text-ink/50 hover:text-ink inline-block mb-4">&larr; Kembali ke feed</a>
+      <div id="postDetailLoading" class="text-center text-sm text-ink/40 py-10">Memuatkan acara...</div>
+      <div id="postDetailNotFound" class="hidden text-center text-sm text-ink/40 py-10">Acara tidak dijumpai.</div>
+
+      <div id="postDetailContent" class="hidden bg-white border border-line rounded-xl overflow-hidden">
+        <img id="pdPoster" class="hidden w-full max-h-80 object-cover" />
+        <div class="p-6">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <h2 id="pdTitle" class="font-poster text-xl"></h2>
+              <p id="pdOrganiser" class="text-sm text-ink/50 mt-1"></p>
             </div>
+            <button id="btnShare" class="flex-shrink-0 text-xs border border-line px-3 py-1.5 rounded-md hover:bg-paper">Kongsi</button>
+          </div>
 
-            <!-- Borang Log Masuk -->
-            <form id="login-form" class="hidden space-y-3">
-                <div>
-                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">No. Kad Pengenalan</label>
-                    <input type="text" id="login-ic" inputmode="numeric" placeholder="cth: 900101131234" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]" required />
-                </div>
-                <div>
-                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Kod Laluan (6 digit)</label>
-                    <input type="password" id="login-password" inputmode="numeric" maxlength="6" placeholder="••••••" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] tracking-widest" required />
-                </div>
-                <p id="login-error" class="hidden text-xs text-red-600"></p>
-                <button type="submit" class="w-full btn-primary text-white font-semibold py-2.5 rounded-full text-sm mt-2">Log Masuk</button>
-                <p class="text-xs text-center" style="color:var(--color-ink-muted)">Belum ada akaun? <button type="button" onclick="switchAuthMode('register')" class="font-semibold text-brand">Daftar sekarang</button></p>
-            </form>
+          <p id="pdDateLocation" class="text-sm text-ink/70 mt-3"></p>
 
-            <!-- Borang Daftar -->
-            <form id="register-form" class="space-y-3">
-                <div>
-                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Nama Penuh</label>
-                    <input type="text" id="reg-fullname" placeholder="Nama penuh seperti Kad Pengenalan" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]" required />
-                </div>
-                <div>
-                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Sekolah</label>
-                    <select id="reg-school" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]" required>
-                        <option value="" disabled selected>Pilih sekolah</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">No. Kad Pengenalan</label>
-                    <input type="text" id="reg-ic" inputmode="numeric" placeholder="cth: 900101131234 (12 digit, tanpa sengkang)" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]" required />
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Jantina (Auto)</label>
-                        <input type="text" id="reg-gender" readonly placeholder="—" class="w-full bg-slate-100 border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none" />
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Bangsa</label>
-                        <select id="reg-race" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]" required>
-                            <option value="" disabled selected>Pilih bangsa</option>
-                            <option>Melayu</option>
-                            <option>Iban</option>
-                            <option>Bidayuh</option>
-                            <option>Melanau</option>
-                            <option>Cina</option>
-                            <option>India</option>
-                            <option>Orang Ulu</option>
-                            <option>Lain-lain Bumiputera Sarawak</option>
-                            <option>Lain-lain</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Kod Laluan (6 digit)</label>
-                    <input type="password" id="reg-password" inputmode="numeric" maxlength="6" placeholder="••••••" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] tracking-widest" required />
-                </div>
-                <div>
-                    <label class="text-xs font-semibold block mb-1" style="color:var(--color-ink-muted)">Sahkan Kod Laluan</label>
-                    <input type="password" id="reg-password-confirm" inputmode="numeric" maxlength="6" placeholder="••••••" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] tracking-widest" required />
-                </div>
-                <p id="register-error" class="hidden text-xs text-red-600"></p>
-                <button type="submit" class="w-full btn-primary text-white font-semibold py-2.5 rounded-full text-sm mt-2">Daftar & Log Masuk</button>
-                <p class="text-xs text-center" style="color:var(--color-ink-muted)">Sudah ada akaun? <button type="button" onclick="switchAuthMode('login')" class="font-semibold text-brand">Log masuk</button></p>
+          <div class="flex items-center gap-3 mt-4">
+            <a id="pdRegLink" href="#" target="_blank" rel="noopener" class="hidden bg-ink text-paper text-sm px-4 py-2 rounded-md hover:opacity-90">Daftar Sekarang</a>
+            <button id="btnLike" class="border border-line text-sm px-4 py-2 rounded-md hover:bg-paper flex items-center gap-1.5">
+              <span id="likeIcon">🤍</span> <span id="likeCount">0</span>
+            </button>
+          </div>
+
+          <!-- Komen -->
+          <div class="mt-8 border-t border-line pt-5">
+            <p class="font-poster text-sm text-ink/60 mb-3">KOMEN (<span id="commentCount">0</span>)</p>
+
+            <form id="commentForm" class="hidden flex gap-2 mb-4">
+              <input type="text" id="commentInput" required placeholder="Tulis komen..." maxlength="500"
+                class="flex-1 border border-line rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-accent" />
+              <button type="submit" class="bg-ink text-paper text-sm px-4 py-2 rounded-md hover:opacity-90">Hantar</button>
             </form>
+            <p id="commentLoginPrompt" class="hidden text-xs text-ink/40 mb-4">Log masuk untuk tulis komen.</p>
+
+            <div id="commentList" class="space-y-3"></div>
+          </div>
         </div>
+      </div>
+    </section>
+
+    <!-- VIEW: PROFIL (#profile/uid) -->
+    <section id="viewProfile" class="hidden">
+      <div id="profileLoading" class="text-center text-sm text-ink/40 py-10">Memuatkan profil...</div>
+
+      <div id="profileContent" class="hidden">
+        <div class="bg-white border border-line rounded-xl p-6 flex items-center gap-4">
+          <div id="profileAvatar" class="w-16 h-16 rounded-full bg-ink text-paper flex items-center justify-center font-poster text-xl flex-shrink-0"></div>
+          <div class="flex-1 min-w-0">
+            <h2 id="profileDisplayName" class="font-poster text-lg truncate"></h2>
+            <p id="profileUsername" class="text-sm text-ink/40"></p>
+          </div>
+          <button id="btnEditBio" class="hidden text-xs border border-line rounded-md px-3 py-1.5 hover:bg-paper flex-shrink-0">
+            Sunting Bio
+          </button>
+        </div>
+
+        <p id="profileBioDisplay" class="text-sm text-ink/70 mt-3 px-1"></p>
+
+        <form id="editBioForm" class="hidden mt-3 space-y-2">
+          <textarea id="profileBioInput" rows="3" placeholder="Tulis bio ringkas..."
+            class="w-full border border-line rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-accent"></textarea>
+          <div class="flex gap-2">
+            <button type="submit" class="bg-ink text-paper text-xs font-semibold px-4 py-2 rounded-md hover:opacity-90">Simpan</button>
+            <button type="button" id="btnCancelEditBio" class="text-xs px-4 py-2 rounded-md border border-line hover:bg-paper">Batal</button>
+          </div>
+        </form>
+
+        <div class="grid sm:grid-cols-3 gap-4 mt-6">
+          <div class="bg-white border border-line rounded-lg p-4">
+            <p class="font-poster text-2xl" id="statEvents">0</p>
+            <p class="text-xs text-ink/50 mt-1">Acara dicipta</p>
+          </div>
+          <div class="bg-white border border-line rounded-lg p-4">
+            <p class="font-poster text-2xl" id="statLikes">0</p>
+            <p class="text-xs text-ink/50 mt-1">Post disukai</p>
+          </div>
+          <div class="bg-white border border-line rounded-lg p-4">
+            <p class="font-poster text-2xl" id="statComments">0</p>
+            <p class="text-xs text-ink/50 mt-1">Komen ditulis</p>
+          </div>
+        </div>
+        <p class="text-xs text-ink/40 mt-4 text-center">
+          Senarai acara/like/komen sebenar akan dipapar di sini selepas Fasa 3–5 dibina.
+        </p>
+      </div>
+
+      <div id="profileNotFound" class="hidden text-center text-sm text-ink/40 py-10">
+        Profil tidak dijumpai.
+      </div>
+    </section>
+  </main>
+
+  <footer class="text-center text-xs text-ink/40 py-6">
+    Papan Acara &middot; Dibina dengan Firebase + Vercel
+  </footer>
+
+  <!-- ===================== MODAL LOGIN/DAFTAR ===================== -->
+  <div id="authModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 relative">
+      <button id="btnCloseModal" class="absolute top-3 right-4 text-ink/40 hover:text-ink text-xl">&times;</button>
+
+      <!-- Tab suis: Log Masuk / Daftar -->
+      <div class="flex gap-2 mb-5">
+        <button data-tab="login" class="authTab flex-1 py-2 rounded-md text-sm font-semibold bg-ink text-paper">Log Masuk</button>
+        <button data-tab="register" class="authTab flex-1 py-2 rounded-md text-sm font-semibold bg-paper text-ink/60">Daftar</button>
+      </div>
+
+      <p id="authError" class="hidden text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3"></p>
+
+      <!-- Borang Log Masuk -->
+      <form id="loginForm" class="space-y-3">
+        <input type="email" required placeholder="Emel" id="loginEmail"
+          class="w-full border border-line rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-accent" />
+        <input type="password" required placeholder="Kata laluan" id="loginPassword"
+          class="w-full border border-line rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-accent" />
+        <button type="submit" class="w-full bg-ink text-paper font-semibold text-sm py-2 rounded-md hover:opacity-90">
+          Log Masuk
+        </button>
+      </form>
+
+      <!-- Borang Daftar -->
+      <form id="registerForm" class="space-y-3 hidden">
+        <input type="text" required placeholder="Nama Papar (displayName)" id="regDisplayName"
+          class="w-full border border-line rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-accent" />
+        <input type="email" required placeholder="Emel" id="regEmail"
+          class="w-full border border-line rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-accent" />
+        <input type="password" required minlength="6" placeholder="Kata laluan (min. 6 aksara)" id="regPassword"
+          class="w-full border border-line rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-accent" />
+        <button type="submit" class="w-full bg-ink text-paper font-semibold text-sm py-2 rounded-md hover:opacity-90">
+          Daftar Akaun
+        </button>
+      </form>
+
+      <div class="flex items-center gap-3 my-4">
+        <div class="flex-1 h-px bg-line"></div>
+        <span class="text-xs text-ink/40">ATAU</span>
+        <div class="flex-1 h-px bg-line"></div>
+      </div>
+
+      <button id="btnGoogleSignIn"
+        class="w-full border border-line rounded-md py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-paper">
+        Log Masuk dengan Google
+      </button>
     </div>
+  </div>
 
-    <script>
-        // --- SENARAI SEKOLAH ---
-        const SCHOOL_LIST = [
-            "SJKC CHEE MUNG","SJKC CHIN NAM","SJKC CHUNG HUA SG LUMUT","SJKC CHUNG HUA SIBUTI",
-            "SK BATU NIAH","SK BATU TELLINGAI","SK BEKENU","SK BELIAU AHAD","SK BELIAU ISA",
-            "SK KELAPA SAWIT NO 1","SK KELAPA SAWIT NO 2","SK KELAPA SAWIT NO 3","SK KELAPA SAWIT NO 4","SK KELAPA SAWIT NO 5",
-            "SK KELURU TENGAH","SK KITA","SK KPG ANGUS","SK KPG BULAU","SK KPG BUNGAI","SK KPG IRAN","SK KPG KUALA SIBUTI",
-            "SK KPG MASJID","SK KPG SELANYAU","SK KPG SUBAK","SK KPG TARIKAN","SK KPG TEGAGENG","SK RANCANGAN SEPUPOK",
-            "SK RUMAH BARAT","SK RUMAH ESSAU","SK RUMAH GOYANG","SK RUMAH MENTALI","SK RUMAH RANGGONG","SK RUMAH TINGGI",
-            "SK RUMAH UNDI","SK SG BAKAS","SK SG LAMAUS","SK SG MANONG","SK SG SAEH","SK SG SEBATU","SK SG TANGAP",
-            "SK SUAI 1","SK TANJUNG BELIPAT","SK TAWAKAL SATAP","SK ULU SATAP","SMK BAKONG","SMK BEKENU",
-            "SMK LUAR BANDAR MIRI","SMK SUAI","SMK SUBIS","PPD SUBIS"
-        ];
-        const schoolSelect = document.getElementById('reg-school');
-        SCHOOL_LIST.forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s; opt.textContent = s;
-            schoolSelect.appendChild(opt);
+  <!-- ===================== MODAL CIPTA/SUNTING ACARA ===================== -->
+  <div id="postModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4 py-8 overflow-y-auto">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative my-auto">
+      <button id="btnClosePostModal" class="absolute top-3 right-4 text-ink/40 hover:text-ink text-xl">&times;</button>
+      <h3 id="postModalTitle" class="font-poster text-lg mb-4">CIPTA ACARA</h3>
+
+      <p id="postError" class="hidden text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3"></p>
+      <p id="postProgress" class="hidden text-xs text-ink/60 bg-paper border border-line rounded-md px-3 py-2 mb-3"></p>
+
+      <form id="postForm" class="space-y-3">
+        <input type="hidden" id="postId" value="" />
+
+        <div>
+          <label class="text-xs font-medium text-ink/60">Tajuk Acara</label>
+          <input type="text" required id="postTitle" placeholder="cth: Pertandingan Robotik Kebangsaan"
+            class="w-full border border-line rounded-md px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-amber-accent" />
+        </div>
+
+        <div>
+          <label class="text-xs font-medium text-ink/60">Penganjur</label>
+          <input type="text" required id="postOrganiser" placeholder="cth: Kelab Robotik Sibu"
+            class="w-full border border-line rounded-md px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-amber-accent" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-ink/60">Tarikh Acara</label>
+            <input type="date" required id="postEventDate"
+              class="w-full border border-line rounded-md px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-amber-accent" />
+          </div>
+          <div>
+            <label class="text-xs font-medium text-ink/60">Lokasi</label>
+            <input type="text" required id="postLocation" placeholder="cth: Stadium Tertutup Sibu"
+              class="w-full border border-line rounded-md px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-amber-accent" />
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-medium text-ink/60">Pautan Pendaftaran (jika ada)</label>
+          <input type="url" id="postRegLink" placeholder="https://..."
+            class="w-full border border-line rounded-md px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-amber-accent" />
+        </div>
+
+        <div>
+          <label class="text-xs font-medium text-ink/60">Poster Acara</label>
+          <input type="file" accept="image/*" id="postEventPoster"
+            class="w-full text-sm mt-1 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-ink file:text-paper file:text-xs" />
+          <img id="postEventPosterPreview" class="hidden mt-2 h-24 rounded-md border border-line object-cover" />
+        </div>
+
+        <label class="flex items-center gap-2 text-sm text-ink/70">
+          <input type="checkbox" id="postHighlighted" class="rounded border-line" />
+          Papar dalam banner "Acara Akan Datang"
+        </label>
+
+        <button type="submit" id="btnSubmitPost" class="w-full bg-ink text-paper font-semibold text-sm py-2 rounded-md hover:opacity-90">
+          Cipta Acara
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Tunggu Firebase modular SDK siap init (dari <script type="module"> di <head>)
+    window.addEventListener('firebase-ready', initApp);
+    function initApp() {
+      const { auth, db, ref, set, get, update, onAuthStateChanged,
+              signInWithEmailAndPassword, createUserWithEmailAndPassword,
+              signInWithPopup, GoogleAuthProvider, signOut, updateProfile } = window.__fb;
+
+      // ---------- Elemen DOM: Auth ----------
+      const navAuthArea   = document.getElementById('navAuthArea');
+      const btnOpenLogin  = document.getElementById('btnOpenLogin');
+      const btnCloseModal = document.getElementById('btnCloseModal');
+      const authModal     = document.getElementById('authModal');
+      const authTabs      = document.querySelectorAll('.authTab');
+      const loginForm     = document.getElementById('loginForm');
+      const registerForm  = document.getElementById('registerForm');
+      const authError     = document.getElementById('authError');
+      const statusBanner  = document.getElementById('statusBanner');
+      const btnGoogleSignIn = document.getElementById('btnGoogleSignIn');
+
+      // ---------- Elemen DOM: Views/Router ----------
+      const viewFeed    = document.getElementById('viewFeed');
+      const viewProfile = document.getElementById('viewProfile');
+      const viewPost     = document.getElementById('viewPost');
+      const profileLoading  = document.getElementById('profileLoading');
+      const profileContent  = document.getElementById('profileContent');
+      const profileNotFound = document.getElementById('profileNotFound');
+      const profileAvatar   = document.getElementById('profileAvatar');
+      const profileDisplayName = document.getElementById('profileDisplayName');
+      const profileUsername = document.getElementById('profileUsername');
+      const profileBioDisplay = document.getElementById('profileBioDisplay');
+      const btnEditBio = document.getElementById('btnEditBio');
+      const editBioForm = document.getElementById('editBioForm');
+      const profileBioInput = document.getElementById('profileBioInput');
+      const btnCancelEditBio = document.getElementById('btnCancelEditBio');
+
+      let currentUser = null; // diupdate oleh onAuthStateChanged
+
+      // ---------- Buka / Tutup Modal Login ----------
+      btnOpenLogin.addEventListener('click', () => { clearAuthError(); authModal.classList.remove('hidden'); });
+      btnCloseModal.addEventListener('click', () => authModal.classList.add('hidden'));
+      authModal.addEventListener('click', (e) => { if (e.target === authModal) authModal.classList.add('hidden'); });
+
+      // ---------- Suis Tab Login/Daftar ----------
+      authTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          authTabs.forEach(t => t.classList.remove('bg-ink', 'text-paper'));
+          authTabs.forEach(t => t.classList.add('bg-paper', 'text-ink/60'));
+          tab.classList.add('bg-ink', 'text-paper');
+          tab.classList.remove('bg-paper', 'text-ink/60');
+          clearAuthError();
+          if (tab.dataset.tab === 'login') {
+            loginForm.classList.remove('hidden'); registerForm.classList.add('hidden');
+          } else {
+            registerForm.classList.remove('hidden'); loginForm.classList.add('hidden');
+          }
         });
+      });
 
-        // --- 1. LOGIK UI: TAB KOMPOSER ---
-        let currentComposerType = 'normal';
-        const postInput = document.getElementById('post-input');
+      function clearAuthError() { authError.classList.add('hidden'); authError.textContent = ''; }
+      function showAuthError(msg) { authError.textContent = msg; authError.classList.remove('hidden'); }
+      function showBanner(msg, isError = false) {
+        statusBanner.textContent = msg;
+        statusBanner.classList.remove('hidden');
+        statusBanner.className = `mb-6 rounded-lg border px-4 py-3 text-sm ${
+          isError ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'
+        }`;
+      }
 
-        function switchTab(type) {
-            currentComposerType = type;
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
-            document.getElementById(`tab-${type}`).classList.add('tab-active');
-            document.getElementById('poll-container').classList.add('hidden');
-            document.getElementById('registration-container').classList.add('hidden');
-            if (type === 'poll') {
-                document.getElementById('poll-container').classList.remove('hidden');
-                postInput.placeholder = "Tanya sesuatu atau minta pendapat...";
-            } else if (type === 'registration') {
-                document.getElementById('registration-container').classList.remove('hidden');
-                postInput.placeholder = "Tulis maklumat tambahan mengenai acara ini...";
-            } else {
-                postInput.placeholder = "Apa yang ingin dihebahkan?";
-            }
-        }
-        window.switchTab = switchTab;
+      // ---------- Log Masuk (Email/Password) ----------
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearAuthError();
+        try {
+          await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value);
+          authModal.classList.add('hidden');
+        } catch (err) { showAuthError(terjemahRalatFirebase(err)); }
+      });
 
-        // --- 2. KARUSEL ---
-        const carousel = document.getElementById('events-carousel');
-        let isDown = false, startX, scrollLeft;
+      // ---------- Daftar Akaun Baru ----------
+      registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearAuthError();
+        const displayName = document.getElementById('regDisplayName').value.trim();
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, email, password);
+          await updateProfile(cred.user, { displayName });
+          // Skema: users/{uid}
+          await set(ref(db, 'users/' + cred.user.uid), {
+            username: email.split('@')[0],
+            displayName: displayName,
+            photoURL: cred.user.photoURL || '',
+            bio: ''
+          });
+          authModal.classList.add('hidden');
+        } catch (err) { showAuthError(terjemahRalatFirebase(err)); }
+      });
 
-        window.scrollCarousel = function(direction) {
-            const scrollAmount = carousel.clientWidth;
-            const maxScroll = carousel.scrollWidth - carousel.clientWidth;
-            if (direction === 1) {
-                if (carousel.scrollLeft >= maxScroll - 10) carousel.scrollTo({ left: 0, behavior: 'smooth' });
-                else carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-            } else {
-                if (carousel.scrollLeft <= 10) carousel.scrollTo({ left: maxScroll, behavior: 'smooth' });
-                else carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-            }
-        };
-        carousel.addEventListener('mousedown', (e) => { isDown = true; carousel.classList.add('cursor-grabbing'); startX = e.pageX - carousel.offsetLeft; scrollLeft = carousel.scrollLeft; });
-        carousel.addEventListener('mouseleave', () => { isDown = false; carousel.classList.remove('cursor-grabbing'); });
-        carousel.addEventListener('mouseup', () => { isDown = false; carousel.classList.remove('cursor-grabbing'); });
-        carousel.addEventListener('mousemove', (e) => { if (!isDown) return; e.preventDefault(); const x = e.pageX - carousel.offsetLeft; carousel.scrollLeft = scrollLeft - (x - startX) * 2; });
-
-        const eventsData = [
-            { title: "Karnival Sukan Air Bekenu 2026", date: "15 Ogos 2026", organizer: "Majlis Daerah Subis" },
-            { title: "Pertandingan E-Sukan Parlimen Sibuti", date: "2 September 2026", organizer: "Pusat Khidmat Parlimen" },
-            { title: "Bengkel Usahawan Belia Sarawak", date: "10 September 2026", organizer: "Kementerian Belia dan Sukan" },
-            { title: "Kejohanan Olahraga MSSD Subis", date: "14 Ogos 2026", organizer: "SMK Luar Bandar Miri" }
-        ];
-        function renderCarousel() {
-            carousel.innerHTML = '';
-            const total = eventsData.length;
-            eventsData.forEach((ev, index) => {
-                carousel.innerHTML += `
-                    <div class="pin-card w-[85%] sm:w-[70%] shrink-0 snap-center rounded-2xl p-5 relative select-none">
-                        <div class="pin-badge w-7 h-7 rounded-full absolute -top-3 left-1/2 -translate-x-1/2 flex items-center justify-center">
-                            <i data-lucide="pin" class="w-3.5 h-3.5 text-white"></i>
-                        </div>
-                        <div class="flex items-center justify-between mb-2 mt-1">
-                            <div class="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-brand"><i data-lucide="calendar" class="w-3 h-3"></i> ${ev.date}</div>
-                            <div class="text-[10px] font-bold tracking-widest" style="color:var(--color-ink-muted)">${index + 1} / ${total}</div>
-                        </div>
-                        <h4 class="font-display font-bold text-base leading-tight mb-1" style="color:var(--color-ink)">${ev.title}</h4>
-                        <p class="text-xs line-clamp-1 mb-4" style="color:var(--color-ink-muted)">${ev.organizer}</p>
-                        <button class="w-full py-2 btn-primary text-white font-semibold rounded-xl text-sm shadow-sm hover:opacity-90 transition flex items-center justify-center gap-1 cursor-pointer">Daftar Sekarang <i data-lucide="chevron-right" class="w-4 h-4"></i></button>
-                    </div>`;
+      // ---------- Log Masuk dengan Google ----------
+      btnGoogleSignIn.addEventListener('click', async () => {
+        clearAuthError();
+        const provider = new GoogleAuthProvider();
+        try {
+          const result = await signInWithPopup(auth, provider);
+          const user = result.user;
+          const snap = await get(ref(db, 'users/' + user.uid));
+          if (!snap.exists()) {
+            await set(ref(db, 'users/' + user.uid), {
+              username: (user.email || 'pengguna').split('@')[0],
+              displayName: user.displayName || '',
+              photoURL: user.photoURL || '',
+              bio: ''
             });
-            lucide.createIcons();
-        }
-        renderCarousel();
+          }
+          authModal.classList.add('hidden');
+        } catch (err) { showAuthError(terjemahRalatFirebase(err)); }
+      });
 
-        // --- 3. UTILITI HASH & IC ---
-        async function sha256Hex(text) {
-            const enc = new TextEncoder().encode(text);
-            const buf = await crypto.subtle.digest('SHA-256', enc);
-            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-        function cleanIC(ic) { return (ic || '').replace(/\D/g, ''); }
-        function genderFromIC(ic) {
-            const digits = cleanIC(ic);
-            if (digits.length !== 12) return null;
-            const lastDigit = parseInt(digits.slice(-1), 10);
-            return (lastDigit % 2 === 0) ? 'Perempuan' : 'Lelaki';
-        }
-        document.getElementById('reg-ic').addEventListener('input', (e) => {
-            const g = genderFromIC(e.target.value);
-            document.getElementById('reg-gender').value = g || '—';
-        });
-        [document.getElementById('login-password'), document.getElementById('reg-password'), document.getElementById('reg-password-confirm')].forEach(inp => {
-            inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 6); });
-        });
-
-        // --- 4. MODAL AUTH ---
-        window.openAuthModal = function(mode) {
-            document.getElementById('auth-modal').classList.remove('hidden');
-            switchAuthMode(mode);
-        };
-        window.closeAuthModal = function() {
-            document.getElementById('auth-modal').classList.add('hidden');
-            document.getElementById('login-error').classList.add('hidden');
-            document.getElementById('register-error').classList.add('hidden');
-        };
-        window.switchAuthMode = function(mode) {
-            document.getElementById('login-form').classList.toggle('hidden', mode !== 'login');
-            document.getElementById('register-form').classList.toggle('hidden', mode !== 'register');
-            document.getElementById('auth-modal-title').textContent = mode === 'login' ? 'Log Masuk' : 'Daftar Akaun';
-        };
-
-        // --- 5. SESI PENGGUNA ---
-        const SESSION_KEY = 'subiskini_session';
-        let currentUser = null;
-
-        function loadSession() {
-            try {
-                const raw = localStorage.getItem(SESSION_KEY);
-                currentUser = raw ? JSON.parse(raw) : null;
-            } catch (e) { currentUser = null; }
-            window.currentUser = currentUser;
-            updateAuthUI();
-        }
-        function saveSession(profile) {
-            currentUser = profile;
-            window.currentUser = profile;
-            localStorage.setItem(SESSION_KEY, JSON.stringify(profile));
-            updateAuthUI();
-        }
-        window.logoutUser = function() {
-            currentUser = null;
-            window.currentUser = null;
-            localStorage.removeItem(SESSION_KEY);
-            updateAuthUI();
-            document.getElementById('user-menu').classList.add('hidden');
-        };
-        window.toggleUserMenu = function() {
-            document.getElementById('user-menu').classList.toggle('hidden');
-        };
-
-        function updateAuthUI() {
-            const isGuest = !currentUser;
-            document.body.classList.toggle('is-guest', isGuest);
-            document.getElementById('nav-guest').classList.toggle('hidden', !isGuest);
-            document.getElementById('nav-guest').classList.toggle('flex', isGuest);
-            document.getElementById('nav-user').classList.toggle('hidden', isGuest);
-            document.getElementById('nav-user').classList.toggle('flex', !isGuest);
-            if (!isGuest) {
-                document.getElementById('nav-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentUser.ic)}`;
-                document.getElementById('nav-username').textContent = currentUser.fullName;
-                document.getElementById('user-menu-school').textContent = currentUser.school;
-                document.getElementById('composer-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentUser.ic)}`;
-            }
-        }
-
-        // --- 6. STOR PROFIL (Firebase jika dikonfigurasikan, jika tidak guna localStorage sebagai demo) ---
-        // Definisi sebenar fungsi getProfileByIC / createProfile ada dalam <script type="module"> di bawah,
-        // supaya boleh guna Firebase Realtime Database SDK.
-
-        window.handleLoginSubmit = async function(e) {
-            e.preventDefault();
-            const errEl = document.getElementById('login-error');
-            errEl.classList.add('hidden');
-
-            const ic = cleanIC(document.getElementById('login-ic').value);
-            const password = document.getElementById('login-password').value;
-
-            if (ic.length !== 12) { errEl.textContent = 'No. Kad Pengenalan mesti 12 digit.'; errEl.classList.remove('hidden'); return; }
-            if (password.length !== 6) { errEl.textContent = 'Kod laluan mesti 6 digit.'; errEl.classList.remove('hidden'); return; }
-
-            const profile = await window.getProfileByIC(ic);
-            if (!profile) { errEl.textContent = 'No. IC tidak dijumpai. Sila daftar akaun.'; errEl.classList.remove('hidden'); return; }
-
-            const hash = await sha256Hex(ic + ':' + password);
-            if (hash !== profile.passwordHash) { errEl.textContent = 'Kod laluan salah.'; errEl.classList.remove('hidden'); return; }
-
-            saveSession({ ic, fullName: profile.fullName, school: profile.school, gender: profile.gender, race: profile.race });
-            closeAuthModal();
-        };
-
-        window.handleRegisterSubmit = async function(e) {
-            e.preventDefault();
-            const errEl = document.getElementById('register-error');
-            errEl.classList.add('hidden');
-
-            const fullName = document.getElementById('reg-fullname').value.trim();
-            const school = document.getElementById('reg-school').value;
-            const ic = cleanIC(document.getElementById('reg-ic').value);
-            const gender = genderFromIC(ic);
-            const race = document.getElementById('reg-race').value;
-            const password = document.getElementById('reg-password').value;
-            const passwordConfirm = document.getElementById('reg-password-confirm').value;
-
-            if (!fullName) { errEl.textContent = 'Sila isi nama penuh.'; errEl.classList.remove('hidden'); return; }
-            if (!school) { errEl.textContent = 'Sila pilih sekolah.'; errEl.classList.remove('hidden'); return; }
-            if (ic.length !== 12) { errEl.textContent = 'No. Kad Pengenalan mesti 12 digit.'; errEl.classList.remove('hidden'); return; }
-            if (!gender) { errEl.textContent = 'No. Kad Pengenalan tidak sah.'; errEl.classList.remove('hidden'); return; }
-            if (!race) { errEl.textContent = 'Sila pilih bangsa.'; errEl.classList.remove('hidden'); return; }
-            if (password.length !== 6) { errEl.textContent = 'Kod laluan mesti 6 digit.'; errEl.classList.remove('hidden'); return; }
-            if (password !== passwordConfirm) { errEl.textContent = 'Kod laluan tidak sepadan.'; errEl.classList.remove('hidden'); return; }
-
-            const existing = await window.getProfileByIC(ic);
-            if (existing) { errEl.textContent = 'No. IC ini sudah didaftarkan. Sila log masuk.'; errEl.classList.remove('hidden'); return; }
-
-            const passwordHash = await sha256Hex(ic + ':' + password);
-            const profile = { fullName, school, ic, gender, race, passwordHash, createdAt: Date.now() };
-            await window.createProfile(ic, profile);
-
-            saveSession({ ic, fullName, school, gender, race });
-            closeAuthModal();
-        };
-
-        document.getElementById('login-form').addEventListener('submit', handleLoginSubmit);
-        document.getElementById('register-form').addEventListener('submit', handleRegisterSubmit);
-
-        loadSession();
-        lucide.createIcons();
-    </script>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue, push, set, get, child } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
-
-        // =========================================================================
-        // MASUKKAN KONFIGURASI FIREBASE ANDA DI SINI (satu sahaja, dikongsi oleh
-        // hebahan/posts DAN profiles/akaun — tiada Supabase digunakan)
-        // =========================================================================
-        const firebaseConfig = {
-            // apiKey: "API_KEY_ANDA",
-            // authDomain: "PROJEK_ANDA.firebaseapp.com",
-            // databaseURL: "https://PROJEK_ANDA-default-rtdb.asia-southeast1.firebasedatabase.app",
-        };
-
-        const feedContainer = document.getElementById('feed-container');
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const postForm = document.getElementById('post-form');
-        const submitBtn = document.getElementById('submit-btn');
-
-        const isFirebaseConfigured = Object.keys(firebaseConfig).length > 0;
-        let db, postsRef, profilesRef;
-
-        if (isFirebaseConfigured) {
-            const app = initializeApp(firebaseConfig);
-            db = getDatabase(app);
-            postsRef = ref(db, 'posts');
-            profilesRef = ref(db, 'profiles');
-        }
-
-        // --- Stor profil: Firebase jika ada konfigurasi, jika tidak guna localStorage (mod demo) ---
-        window.getProfileByIC = async function(ic) {
-            if (isFirebaseConfigured) {
-                const snap = await get(child(profilesRef, ic));
-                return snap.exists() ? snap.val() : null;
-            }
-            const all = JSON.parse(localStorage.getItem('subiskini_profiles_demo') || '{}');
-            return all[ic] || null;
-        };
-        window.createProfile = async function(ic, profileData) {
-            if (isFirebaseConfigured) {
-                await set(child(profilesRef, ic), profileData);
-                return;
-            }
-            const all = JSON.parse(localStorage.getItem('subiskini_profiles_demo') || '{}');
-            all[ic] = profileData;
-            localStorage.setItem('subiskini_profiles_demo', JSON.stringify(all));
-        };
-
-        const tagColors = {
-            'kokurikulum': 'bg-[var(--color-primary-soft)] text-[var(--color-primary-dark)]',
-            'sukan': 'bg-red-100 text-red-700', 'seni': 'bg-purple-100 text-purple-700', 'lain-lain': 'bg-slate-100 text-slate-700'
-        };
-
-        function createPostHTML(post) {
-            const avatar = post.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author_name}`;
-            const tagColor = tagColors[post.tag] || 'bg-slate-100 text-slate-700';
-            const tagLabel = post.tag ? post.tag.charAt(0).toUpperCase() + post.tag.slice(1) : 'Lain-lain';
-            let extraContent = '';
-
-            if (post.type === 'poll' && post.poll) {
-                let pollHtml = '<div class="mt-3 mb-4 space-y-2">';
-                post.poll.options.forEach(opt => {
-                    const pct = post.poll.totalVotes > 0 ? Math.round((opt.votes / post.poll.totalVotes) * 100) : 0;
-                    pollHtml += `<div class="relative bg-[var(--color-bg)] rounded-lg overflow-hidden border border-[var(--color-border)]"><div class="absolute top-0 left-0 bottom-0 bg-[var(--color-primary-soft)] transition-all duration-1000" style="width: ${pct}%"></div><div class="relative p-3 flex justify-between items-center z-10"><span class="font-medium text-sm" style="color:var(--color-ink)">${opt.text}</span><span class="text-xs font-bold" style="color:var(--color-ink-muted)">${pct}%</span></div></div>`;
-                });
-                pollHtml += `<div class="text-xs mt-2 px-1" style="color:var(--color-ink-muted)">${post.poll.totalVotes} undian</div></div>`;
-                extraContent = pollHtml;
-            }
-
-            if (post.type === 'registration' && post.registration) {
-                let postersHtml = '';
-                if (post.registration.posterHebahan || post.registration.posterKeputusan) {
-                    postersHtml = `<div class="grid ${post.registration.posterHebahan && post.registration.posterKeputusan ? 'grid-cols-2' : 'grid-cols-1'} gap-2 border-b border-[var(--color-border)] bg-[var(--color-bg)] p-2">`;
-                    if (post.registration.posterHebahan) postersHtml += `<div class="relative"><span class="absolute top-2 left-2 btn-primary text-white text-[10px] px-2.5 py-0.5 rounded shadow font-bold tracking-wider">HEBAHAN</span><img src="${post.registration.posterHebahan}" class="w-full h-40 object-cover rounded shadow-sm border border-[var(--color-border)]" /></div>`;
-                    if (post.registration.posterKeputusan) postersHtml += `<div class="relative"><span class="absolute top-2 left-2 text-white text-[10px] px-2.5 py-0.5 rounded shadow font-bold tracking-wider" style="background:var(--color-accent)">KEPUTUSAN</span><img src="${post.registration.posterKeputusan}" class="w-full h-40 object-cover rounded shadow-sm border border-[var(--color-border)]" /></div>`;
-                    postersHtml += `</div>`;
-                } else {
-                    postersHtml = `<div class="relative w-full h-32 bg-[var(--color-bg)] border-b border-[var(--color-border)] flex items-center justify-center"><img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop" alt="Poster Lalai" class="max-h-full max-w-full object-cover opacity-40 grayscale" /></div>`;
-                }
-                extraContent = `<div class="mt-3 mb-4 rounded-xl border border-[var(--color-border)] overflow-hidden bg-[var(--color-bg)]">${postersHtml}<div class="p-4"><h4 class="font-display font-bold text-lg leading-tight mb-2" style="color:var(--color-ink)">${post.registration.title}</h4><div class="flex flex-col gap-1.5 text-sm font-medium mb-4" style="color:var(--color-ink-muted)"><span class="flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4 text-brand"></i> ${post.registration.date}</span>${post.registration.organizer ? `<span class="flex items-center gap-2"><i data-lucide="users" class="w-4 h-4" style="color:var(--color-accent)"></i> ${post.registration.organizer}</span>` : ''}</div>${post.registration.link ? `<a href="${post.registration.link}" target="_blank" class="w-full py-2.5 btn-primary text-white font-medium rounded-xl text-sm shadow-sm transition flex items-center justify-center gap-2">Daftar / Maklumat Lanjut <i data-lucide="external-link" class="w-4 h-4"></i></a>` : `<button class="w-full py-2.5 bg-slate-200 text-slate-500 cursor-not-allowed font-medium rounded-xl text-sm transition flex items-center justify-center gap-2">Tiada Pautan Pendaftaran</button>`}</div></div>`;
-            }
-
-            return `
-                <div id="post-${post.id}" class="bg-white rounded-2xl shadow-sm border border-[var(--color-border)] overflow-hidden mb-4 transition-all duration-300">
-                    <div class="p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center gap-3">
-                                <img src="${avatar}" class="w-10 h-10 rounded-full border border-[var(--color-border)] bg-slate-50 object-cover" />
-                                <div>
-                                    <h3 class="font-semibold text-sm" style="color:var(--color-ink)">${post.author_name}</h3>
-                                    <div class="flex items-center gap-2 text-xs" style="color:var(--color-ink-muted)"><span>${post.time}</span><span>•</span><span class="px-1.5 py-0.5 rounded ${tagColor}">${tagLabel}</span></div>
-                                </div>
-                            </div>
-                            <div class="relative">
-                                <button onclick="toggleMenu('${post.id}')" class="p-1.5 rounded-full transition hover:bg-slate-100" style="color:var(--color-ink-muted)"><i data-lucide="more-horizontal" class="w-5 h-5"></i></button>
-                                <div id="post-menu-${post.id}" class="hidden absolute right-0 mt-1 w-36 bg-white border border-[var(--color-border)] rounded-lg shadow-lg py-1 z-10">
-                                    <button onclick="editPost('${post.id}')" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2" style="color:var(--color-ink)"><i data-lucide="edit-3" class="w-4 h-4"></i> Edit</button>
-                                    <button class="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2" style="color:var(--color-ink)"><i data-lucide="share" class="w-4 h-4"></i> Kongsi</button>
-                                    <button onclick="deletePost('${post.id}')" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"><i data-lucide="trash-2" class="w-4 h-4"></i> Padam</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="post-view-${post.id}"><p class="whitespace-pre-wrap" style="color:var(--color-ink)" id="post-text-${post.id}">${post.content}</p></div>
-                        <div id="post-edit-${post.id}" class="hidden mt-2 mb-3">
-                            <textarea id="edit-input-${post.id}" class="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl p-3 text-sm focus:outline-none focus:border-[var(--color-primary)] focus:bg-white transition resize-none min-h-[80px]">${post.content}</textarea>
-                            <div class="flex justify-end gap-2 mt-2">
-                                <button onclick="cancelEdit('${post.id}')" class="px-4 py-1.5 text-xs font-medium hover:bg-slate-200 rounded-lg transition" style="color:var(--color-ink-muted)">Batal</button>
-                                <button onclick="saveEdit('${post.id}')" class="px-4 py-1.5 text-xs font-medium text-white btn-primary rounded-lg shadow-sm transition">Simpan</button>
-                            </div>
-                        </div>
-                        ${extraContent}
-                    </div>
-                    <div class="px-4 py-2 bg-[var(--color-bg)] border-t border-[var(--color-border)] flex items-center justify-between" style="color:var(--color-ink-muted)">
-                        <button id="btn-like-${post.id}" onclick="toggleLike('${post.id}')" class="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-white rounded-lg transition text-sm font-medium"><i data-lucide="thumbs-up" class="w-4 h-4"></i> <span id="like-count-${post.id}">${Math.floor(Math.random() * 20) + 1}</span> Suka</button>
-                        <button onclick="toggleComment('${post.id}')" class="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-white rounded-lg transition text-sm font-medium"><i data-lucide="message-square" class="w-4 h-4"></i> Komen</button>
-                    </div>
-                    <div id="comment-section-${post.id}" class="hidden bg-[var(--color-bg)] border-t border-[var(--color-border)] p-4">
-                        <div class="flex gap-2 mb-3">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" class="w-8 h-8 rounded-full border border-[var(--color-border)] bg-white" />
-                            <div class="flex-1 flex">
-                                <input type="text" id="comment-input-${post.id}" placeholder="Tulis komen anda..." class="flex-1 bg-white border border-[var(--color-border)] rounded-l-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--color-primary)]" />
-                                <button onclick="submitComment('${post.id}')" class="btn-primary text-white px-3 py-2 rounded-r-lg transition text-sm font-medium">Hantar</button>
-                            </div>
-                        </div>
-                        <div id="comments-list-${post.id}" class="space-y-3 pl-10 text-sm">
-                            <div class="bg-white p-2.5 rounded-lg border border-[var(--color-border)] shadow-sm"><span class="font-bold block text-xs mb-0.5" style="color:var(--color-ink)">Ahli Komuniti</span><span style="color:var(--color-ink-muted)">Maklumat yang sangat bermanfaat, terima kasih!</span></div>
-                        </div>
-                    </div>
-                </div>`;
-        }
-
-        window.toggleMenu = function(postId) { document.getElementById(`post-menu-${postId}`).classList.toggle('hidden'); };
-        window.showConfirmModal = function(onConfirm) {
-            document.getElementById('custom-modal').classList.remove('hidden');
-            const confirmBtn = document.getElementById('modal-confirm-btn');
-            confirmBtn.replaceWith(confirmBtn.cloneNode(true));
-            document.getElementById('modal-confirm-btn').addEventListener('click', function() { onConfirm(); closeModal(); });
-        };
-        window.closeModal = function() { document.getElementById('custom-modal').classList.add('hidden'); };
-        window.deletePost = function(postId) {
-            toggleMenu(postId);
-            showConfirmModal(() => {
-                const postElement = document.getElementById(`post-${postId}`);
-                if (postElement) { postElement.classList.add('opacity-0', 'scale-95'); setTimeout(() => postElement.remove(), 300); }
-            });
-        };
-        window.editPost = function(postId) {
-            toggleMenu(postId);
-            document.getElementById(`post-view-${postId}`).classList.add('hidden');
-            document.getElementById(`post-edit-${postId}`).classList.remove('hidden');
-            document.getElementById(`edit-input-${postId}`).focus();
-        };
-        window.cancelEdit = function(postId) {
-            document.getElementById(`post-view-${postId}`).classList.remove('hidden');
-            document.getElementById(`post-edit-${postId}`).classList.add('hidden');
-            document.getElementById(`edit-input-${postId}`).value = document.getElementById(`post-text-${postId}`).innerText;
-        };
-        window.saveEdit = function(postId) {
-            const newText = document.getElementById(`edit-input-${postId}`).value.trim();
-            if (!newText) return;
-            document.getElementById(`post-text-${postId}`).innerText = newText;
-            document.getElementById(`post-view-${postId}`).classList.remove('hidden');
-            document.getElementById(`post-edit-${postId}`).classList.add('hidden');
-            if (!isFirebaseConfigured && mockPosts) {
-                const postIndex = mockPosts.findIndex(p => p.id == postId);
-                if (postIndex > -1) mockPosts[postIndex].content = newText;
-            }
-        };
-        window.toggleLike = function(postId) {
-            const btn = document.getElementById(`btn-like-${postId}`);
-            const countSpan = document.getElementById(`like-count-${postId}`);
-            if (btn.dataset.liked === '1') {
-                btn.dataset.liked = '0'; btn.style.color = ''; countSpan.innerText = parseInt(countSpan.innerText) - 1;
-            } else {
-                btn.dataset.liked = '1'; btn.style.color = 'var(--color-primary)'; countSpan.innerText = parseInt(countSpan.innerText) + 1;
-            }
-        };
-        window.toggleComment = function(postId) { document.getElementById(`comment-section-${postId}`).classList.toggle('hidden'); };
-        window.submitComment = function(postId) {
-            const input = document.getElementById(`comment-input-${postId}`);
-            const text = input.value.trim();
-            if (!text) return;
-            const list = document.getElementById(`comments-list-${postId}`);
-            list.insertAdjacentHTML('beforeend', `<div class="bg-white p-2.5 rounded-lg border border-[var(--color-border)] shadow-sm animate-pulse"><span class="font-bold block text-xs mb-0.5" style="color:var(--color-primary)">Anda</span><span style="color:var(--color-ink-muted)">${text}</span></div>`);
-            setTimeout(() => { list.lastElementChild.classList.remove('animate-pulse'); }, 1000);
-            input.value = '';
-        };
-
-        let mockPosts;
-        if (isFirebaseConfigured) {
-            onValue(postsRef, (snapshot) => {
-                loadingSpinner.style.display = 'none';
-                feedContainer.innerHTML = '';
-                const data = snapshot.val();
-                if (data) {
-                    Object.keys(data).map(key => ({ id: key, ...data[key] })).reverse().forEach(post => { feedContainer.innerHTML += createPostHTML(post); });
-                } else {
-                    feedContainer.innerHTML = '<div class="text-center py-10 bg-white rounded-xl border border-[var(--color-border)]"><p class="font-medium" style="color:var(--color-ink-muted)">Belum ada hebahan.</p></div>';
-                }
-                lucide.createIcons();
-            });
+      // ---------- Pantau Status Login (real-time) ----------
+      onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        if (user) {
+          navAuthArea.innerHTML = `
+            <a href="#profile/${user.uid}" class="text-sm hidden sm:inline hover:text-amber-accent transition">${user.displayName || user.email}</a>
+            <button id="btnLogout" class="bg-white/10 hover:bg-white/20 text-paper text-sm px-3 py-2 rounded-md transition">Log Keluar</button>
+          `;
+          document.getElementById('btnLogout').addEventListener('click', () => signOut(auth));
         } else {
-            mockPosts = [
-                { id: 1, author_name: "Majlis Daerah Subis", content: "Terima kasih kepada semua yang sudi hadir ke acara sukan air kelolaan kami semalam. Berikut adalah keputusan rasmi yang ditunggu-tunggu!", time: "2 jam yang lalu", tag: "sukan", type: "registration", registration: { title: "Karnival Sukan Air Bekenu 2026", date: "27 Julai 2026", organizer: "Majlis Daerah Subis", link: "https://mdsubis.gov.my/sukan-air", posterHebahan: "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop", posterKeputusan: "https://images.unsplash.com/photo-1578269174936-2709b6aeb913?q=80&w=800&auto=format&fit=crop" }, avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=subis&backgroundColor=0284c7" },
-                { id: 2, author_name: "Cikgu Salmah", content: "Pilih aktiviti kegemaran anda untuk karnival hujung tahun ini. Undian tertinggi akan mendapat peruntukan lebih besar!", time: "5 jam yang lalu", tag: "kokurikulum", type: "poll", poll: { options: [{ text: "Pertandingan Memasak", votes: 45 }, { text: "Sukaneka Air", votes: 89 }, { text: "E-Sukan (Mobile)", votes: 120 }], totalVotes: 254 }, avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Salmah" }
-            ];
-            function renderMockPosts() { feedContainer.innerHTML = ''; mockPosts.forEach(post => { feedContainer.innerHTML += createPostHTML(post); }); lucide.createIcons(); }
-            loadingSpinner.style.display = 'none';
-            renderMockPosts();
-            window.addMockPost = function(newPostData) { mockPosts.unshift({ id: Date.now(), ...newPostData }); renderMockPosts(); };
+          navAuthArea.innerHTML = `
+            <button id="btnOpenLogin" class="bg-amber-accent text-ink font-semibold text-sm px-4 py-2 rounded-md hover:opacity-90 transition">Log Masuk</button>
+          `;
+          document.getElementById('btnOpenLogin').addEventListener('click', () => { clearAuthError(); authModal.classList.remove('hidden'); });
         }
+        // Re-render view semasa (bio edit button bergantung pada currentUser)
+        route();
+      });
 
-        postForm.addEventListener('submit', async (e) => {
+      function terjemahRalatFirebase(err) {
+        const map = {
+          'auth/email-already-in-use': 'Emel ini sudah didaftarkan.',
+          'auth/invalid-email': 'Format emel tidak sah.',
+          'auth/weak-password': 'Kata laluan terlalu lemah (minimum 6 aksara).',
+          'auth/user-not-found': 'Akaun tidak dijumpai.',
+          'auth/wrong-password': 'Kata laluan salah.',
+          'auth/invalid-credential': 'Emel atau kata laluan salah.',
+          'auth/popup-closed-by-user': 'Log masuk Google dibatalkan.',
+        };
+        return map[err.code] || ('Ralat: ' + err.message);
+      }
+
+      // =====================================================
+      // ROUTER (hash-based): #profile/{uid} atau default = feed
+      // =====================================================
+      window.addEventListener('hashchange', route);
+      route();
+
+      function route() {
+        const hash = location.hash.replace(/^#\/?/, ''); // buang '#' atau '#/'
+        viewFeed.classList.add('hidden');
+        viewProfile.classList.add('hidden');
+        viewPost.classList.add('hidden');
+
+        if (hash.startsWith('profile/')) {
+          viewProfile.classList.remove('hidden');
+          renderProfile(hash.split('/')[1]);
+        } else if (hash.startsWith('post/')) {
+          viewPost.classList.remove('hidden');
+          renderSinglePost(hash.split('/')[1]);
+        } else {
+          viewFeed.classList.remove('hidden');
+        }
+      }
+
+      async function renderProfile(uid) {
+        profileContent.classList.add('hidden');
+        profileNotFound.classList.add('hidden');
+        profileLoading.classList.remove('hidden');
+        editBioForm.classList.add('hidden');
+
+        try {
+          const snap = await get(ref(db, 'users/' + uid));
+          profileLoading.classList.add('hidden');
+
+          if (!snap.exists()) {
+            profileNotFound.classList.remove('hidden');
+            return;
+          }
+          const data = snap.val();
+          profileContent.classList.remove('hidden');
+
+          const initial = (data.displayName || data.username || '?').charAt(0).toUpperCase();
+          profileAvatar.textContent = initial;
+          profileDisplayName.textContent = data.displayName || data.username || '(tiada nama)';
+          profileUsername.textContent = '@' + (data.username || uid.slice(0, 6));
+          profileBioDisplay.textContent = data.bio || 'Tiada bio lagi.';
+
+          // Butang "Sunting Bio" hanya untuk pemilik profil sendiri
+          const isOwner = currentUser && currentUser.uid === uid;
+          btnEditBio.classList.toggle('hidden', !isOwner);
+
+          btnEditBio.onclick = () => {
+            profileBioInput.value = data.bio || '';
+            editBioForm.classList.remove('hidden');
+          };
+          btnCancelEditBio.onclick = () => editBioForm.classList.add('hidden');
+
+          editBioForm.onsubmit = async (e) => {
             e.preventDefault();
-            if (!window.currentUser) { window.openAuthModal('login'); return; }
-            const content = document.getElementById('post-input').value.trim();
-            if (!content) return;
-            submitBtn.innerHTML = 'Menyimpan...'; submitBtn.disabled = true;
+            const newBio = profileBioInput.value.trim();
+            await update(ref(db, 'users/' + uid), { bio: newBio });
+            profileBioDisplay.textContent = newBio || 'Tiada bio lagi.';
+            editBioForm.classList.add('hidden');
+            showBanner('Bio dikemaskini.');
+          };
 
-            const newPostData = {
-                author_name: window.currentUser.fullName,
-                author_ic: window.currentUser.ic,
-                content: content, time: "Baru sahaja",
-                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(window.currentUser.ic)}`,
-                tag: document.getElementById('post-tag').value,
-                type: window.currentComposerType
-            };
+          // Stats: sementara 0 — akan disambung ke data sebenar bila posts/likes/comments dibina (Fasa 3–5)
+          document.getElementById('statEvents').textContent = '0';
+          document.getElementById('statLikes').textContent = '0';
+          document.getElementById('statComments').textContent = '0';
 
-            if (window.currentComposerType === 'poll') {
-                newPostData.poll = { totalVotes: 0, options: [
-                    { text: document.getElementById('poll-opt-1').value || "Pilihan 1", votes: 0 },
-                    { text: document.getElementById('poll-opt-2').value || "Pilihan 2", votes: 0 }
-                ] };
-            } else if (window.currentComposerType === 'registration') {
-                const hebahanInput = document.getElementById('reg-poster-hebahan');
-                const keputusanInput = document.getElementById('reg-poster-keputusan');
-                newPostData.registration = {
-                    title: document.getElementById('reg-title').value || "Acara Baharu",
-                    date: document.getElementById('reg-date').value || "Akan Diumumkan",
-                    organizer: document.getElementById('reg-organizer').value || "",
-                    link: document.getElementById('reg-link').value || "",
-                    posterHebahan: hebahanInput.files.length > 0 ? "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=800&auto=format&fit=crop" : null,
-                    posterKeputusan: keputusanInput.files.length > 0 ? "https://images.unsplash.com/photo-1578269174936-2709b6aeb913?q=80&w=800&auto=format&fit=crop" : null
-                };
-            }
+        } catch (err) {
+          profileLoading.classList.add('hidden');
+          profileNotFound.classList.remove('hidden');
+          console.error(err);
+        }
+      }
 
-            if (isFirebaseConfigured) {
-                try { await set(push(postsRef), newPostData); } catch (error) { console.error("Ralat Firebase:", error); alert("Gagal menghantar hebahan."); }
-            } else { window.addMockPost(newPostData); }
+      // =====================================================
+      // FASA 3: CRUD POST/ACARA + UPLOAD POSTER (CLOUDINARY)
+      // =====================================================
+      const { push, remove, onValue } = window.__fb;
+      const CLOUDINARY = window.__cloudinary;
 
-            document.getElementById('post-input').value = '';
-            document.getElementById('reg-title').value = ''; document.getElementById('reg-date').value = '';
-            document.getElementById('reg-organizer').value = ''; document.getElementById('reg-link').value = '';
-            document.getElementById('reg-poster-hebahan').value = ''; document.getElementById('reg-poster-keputusan').value = '';
-            document.getElementById('poll-opt-1').value = ''; document.getElementById('poll-opt-2').value = '';
-            window.switchTab('normal');
-            submitBtn.innerHTML = 'Hebahkan'; submitBtn.disabled = false;
+      const btnNewPost   = document.getElementById('btnNewPost');
+      const postModal    = document.getElementById('postModal');
+      const btnClosePostModal = document.getElementById('btnClosePostModal');
+      const postForm     = document.getElementById('postForm');
+      const postModalTitle = document.getElementById('postModalTitle');
+      const postError    = document.getElementById('postError');
+      const postProgress = document.getElementById('postProgress');
+      const btnSubmitPost = document.getElementById('btnSubmitPost');
+      const postEventPosterInput = document.getElementById('postEventPoster');
+      const postEventPosterPreview = document.getElementById('postEventPosterPreview');
+      const feedList  = document.getElementById('feedList');
+      const feedEmpty = document.getElementById('feedEmpty');
+
+      // Tunjuk butang "+ Cipta Acara" hanya bila login
+      const origOnAuthChanged = onAuthStateChanged; // (sudah dilanggan di atas; kita tambah listener kedua)
+      onAuthStateChanged(auth, (user) => {
+        btnNewPost.classList.toggle('hidden', !user);
+      });
+
+      btnNewPost.addEventListener('click', () => openPostModal());
+      btnClosePostModal.addEventListener('click', () => postModal.classList.add('hidden'));
+      postModal.addEventListener('click', (e) => { if (e.target === postModal) postModal.classList.add('hidden'); });
+
+      // Preview poster sebelum upload
+      postEventPosterInput.addEventListener('change', () => {
+        const file = postEventPosterInput.files[0];
+        if (!file) { postEventPosterPreview.classList.add('hidden'); return; }
+        postEventPosterPreview.src = URL.createObjectURL(file);
+        postEventPosterPreview.classList.remove('hidden');
+      });
+
+      function clearPostError() { postError.classList.add('hidden'); postError.textContent = ''; }
+      function showPostError(msg) { postError.textContent = msg; postError.classList.remove('hidden'); }
+      function showPostProgress(msg) {
+        if (!msg) { postProgress.classList.add('hidden'); return; }
+        postProgress.textContent = msg;
+        postProgress.classList.remove('hidden');
+      }
+
+      function openPostModal(existingPost = null, postKey = null) {
+        clearPostError(); showPostProgress('');
+        postForm.reset();
+        postEventPosterPreview.classList.add('hidden');
+        document.getElementById('postId').value = postKey || '';
+
+        if (existingPost) {
+          postModalTitle.textContent = 'SUNTING ACARA';
+          btnSubmitPost.textContent = 'Simpan Perubahan';
+          document.getElementById('postTitle').value = existingPost.title || '';
+          document.getElementById('postOrganiser').value = existingPost.organiser || '';
+          document.getElementById('postEventDate').value = existingPost.eventDate || '';
+          document.getElementById('postLocation').value = existingPost.location || '';
+          document.getElementById('postRegLink').value = existingPost.registrationLink || '';
+          document.getElementById('postHighlighted').checked = !!existingPost.isHighlighted;
+          if (existingPost.posters && existingPost.posters.eventPoster) {
+            postEventPosterPreview.src = existingPost.posters.eventPoster;
+            postEventPosterPreview.classList.remove('hidden');
+          }
+          // Poster tak wajib re-upload masa edit
+          postEventPosterInput.removeAttribute('required');
+        } else {
+          postModalTitle.textContent = 'CIPTA ACARA';
+          btnSubmitPost.textContent = 'Cipta Acara';
+          postEventPosterInput.setAttribute('required', 'required');
+        }
+        postModal.classList.remove('hidden');
+      }
+
+      // Nama hari BM dari tarikh
+      function namaHariBM(dateStr) {
+        const hari = ['Ahad','Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu'];
+        const d = new Date(dateStr + 'T00:00:00');
+        return hari[d.getDay()];
+      }
+
+      // Mampatkan imej ke WebP (client-side) sebelum upload
+      async function mampatkanImej(file) {
+        const options = { maxSizeMB: 0.3, maxWidthOrHeight: 1600, useWebWorker: true, fileType: 'image/webp' };
+        return await imageCompression(file, options);
+      }
+
+      // Upload ke Cloudinary (unsigned) — pulangkan secure_url
+      async function uploadKeCloudinary(file) {
+        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/image/upload`;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY.uploadPreset);
+        const res = await fetch(url, { method: 'POST', body: formData });
+        if (!res.ok) throw new Error('Upload poster gagal. Semak Cloudinary upload preset (mesti Unsigned).');
+        const data = await res.json();
+        return data.secure_url;
+      }
+
+      postForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearPostError();
+        if (!currentUser) { showPostError('Sila log masuk dahulu.'); return; }
+
+        const postKey = document.getElementById('postId').value;
+        const isEdit = !!postKey;
+        btnSubmitPost.disabled = true;
+
+        try {
+          let eventPosterUrl = null;
+          const file = postEventPosterInput.files[0];
+          if (file) {
+            showPostProgress('Memampatkan poster...');
+            const compressed = await mampatkanImej(file);
+            showPostProgress('Memuat naik poster...');
+            eventPosterUrl = await uploadKeCloudinary(compressed);
+          }
+
+          const eventDate = document.getElementById('postEventDate').value;
+          const postData = {
+            authorId: currentUser.uid,
+            title: document.getElementById('postTitle').value.trim(),
+            organiser: document.getElementById('postOrganiser').value.trim(),
+            eventDate: eventDate,
+            eventDay: namaHariBM(eventDate),
+            location: document.getElementById('postLocation').value.trim(),
+            registrationLink: document.getElementById('postRegLink').value.trim(),
+            isHighlighted: document.getElementById('postHighlighted').checked,
+          };
+
+          showPostProgress('Menyimpan acara...');
+
+          if (isEdit) {
+            const updates = { ...postData };
+            if (eventPosterUrl) updates['posters/eventPoster'] = eventPosterUrl;
+            await update(ref(db, 'posts/' + postKey), updates);
+          } else {
+            const newRef = push(ref(db, 'posts'));
+            await set(newRef, {
+              ...postData,
+              posters: { eventPoster: eventPosterUrl, resultPoster: '' },
+              createdAt: Date.now(),
+              likesCount: 0,
+              commentsCount: 0
+            });
+          }
+
+          showPostProgress('');
+          postModal.classList.add('hidden');
+          showBanner(isEdit ? 'Acara dikemaskini.' : 'Acara berjaya dicipta.');
+        } catch (err) {
+          showPostProgress('');
+          showPostError(err.message || 'Ralat menyimpan acara.');
+          console.error(err);
+        } finally {
+          btnSubmitPost.disabled = false;
+        }
+      });
+
+      async function padamPost(postKey) {
+        if (!confirm('Padam acara ini? Tindakan tidak boleh diundur.')) return;
+        try {
+          await remove(ref(db, 'posts/' + postKey));
+          showBanner('Acara dipadam.');
+        } catch (err) {
+          showBanner('Gagal memadam acara: ' + err.message, true);
+        }
+      }
+
+      // ---------- Render Feed (real-time, reverse-chronological) ----------
+      const highlightBanner = document.getElementById('highlightBanner');
+      const highlightScroll = document.getElementById('highlightScroll');
+
+      onValue(ref(db, 'posts'), (snapshot) => {
+        const data = snapshot.val() || {};
+        const entries = Object.entries(data).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+
+        feedEmpty.classList.toggle('hidden', entries.length > 0);
+        feedList.innerHTML = '';
+
+        // --- Banner highlight: isHighlighted && eventDate >= hari ini ---
+        const today = new Date().toISOString().slice(0, 10);
+        const highlighted = entries.filter(([, p]) => p.isHighlighted && p.eventDate >= today);
+        highlightBanner.classList.toggle('hidden', highlighted.length === 0);
+        highlightScroll.innerHTML = highlighted.map(([key, p]) => `
+          <a href="#post/${key}" class="flex-shrink-0 w-56 bg-ink text-paper rounded-lg overflow-hidden hover:opacity-90 transition">
+            ${p.posters && p.posters.eventPoster ? `<img src="${p.posters.eventPoster}" class="w-full h-28 object-cover" />` : ''}
+            <div class="p-3">
+              <p class="text-sm font-semibold truncate">${escapeHtml(p.title || '')}</p>
+              <p class="text-xs text-paper/60 mt-0.5">${escapeHtml(p.eventDay || '')}, ${escapeHtml(p.eventDate || '')}</p>
+            </div>
+          </a>
+        `).join('');
+
+        entries.forEach(([key, post]) => {
+          const isOwner = currentUser && currentUser.uid === post.authorId;
+          const posterUrl = post.posters && post.posters.eventPoster;
+
+          const card = document.createElement('article');
+          card.className = 'bg-white border border-line rounded-xl overflow-hidden flex flex-col sm:flex-row';
+          card.innerHTML = `
+            ${posterUrl ? `<img src="${posterUrl}" class="w-full sm:w-40 h-40 sm:h-auto object-cover flex-shrink-0" />` : ''}
+            <div class="p-4 flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <a href="#post/${key}"><h3 class="font-poster text-base truncate hover:text-amber-accent transition">${escapeHtml(post.title || '')}</h3></a>
+                  <p class="text-xs text-ink/50 mt-0.5">${escapeHtml(post.organiser || '')}</p>
+                </div>
+                ${post.isHighlighted ? '<span class="flex-shrink-0 text-[10px] bg-amber-accent text-ink font-semibold px-2 py-1 rounded">AKAN DATANG</span>' : ''}
+              </div>
+              <p class="text-sm text-ink/70 mt-2">
+                📅 ${escapeHtml(post.eventDay || '')}, ${escapeHtml(post.eventDate || '')}<br/>
+                📍 ${escapeHtml(post.location || '')}
+              </p>
+              <div class="flex items-center justify-between mt-3">
+                <div class="flex gap-3 text-xs text-ink/40">
+                  <span>❤ ${post.likesCount || 0}</span>
+                  <span>💬 ${post.commentsCount || 0}</span>
+                </div>
+                <div class="flex gap-2">
+                  ${post.registrationLink ? `<a href="${escapeAttr(post.registrationLink)}" target="_blank" rel="noopener" class="text-xs bg-ink text-paper px-3 py-1.5 rounded-md hover:opacity-90">Daftar</a>` : ''}
+                  ${isOwner ? `
+                    <button data-action="edit" data-key="${key}" class="text-xs border border-line px-3 py-1.5 rounded-md hover:bg-paper">Sunting</button>
+                    <button data-action="delete" data-key="${key}" class="text-xs border border-red-200 text-red-600 px-3 py-1.5 rounded-md hover:bg-red-50">Padam</button>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+          feedList.appendChild(card);
         });
 
-        lucide.createIcons();
-    </script>
+        // Event delegation untuk butang sunting/padam
+        feedList.querySelectorAll('[data-action="edit"]').forEach(btn => {
+          btn.addEventListener('click', () => openPostModal(data[btn.dataset.key], btn.dataset.key));
+        });
+        feedList.querySelectorAll('[data-action="delete"]').forEach(btn => {
+          btn.addEventListener('click', () => padamPost(btn.dataset.key));
+        });
+      });
+
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
+      }
+      function escapeAttr(str) {
+        return (str || '').replace(/"/g, '&quot;');
+      }
+
+      // =====================================================
+      // FASA 4/5: SINGLE POST VIEW — LIKE, COMMENT, SHARE
+      // =====================================================
+      document.getElementById('btnBackToFeed').addEventListener('click', (e) => {
+        e.preventDefault();
+        location.hash = '';
+      });
+
+      let unsubPostListeners = []; // simpan unsubscribe onValue bila tukar post
+
+      function renderSinglePost(postKey) {
+        // Buang listener post sebelumnya (elak leak/duplicate bila navigasi antara post)
+        unsubPostListeners.forEach(fn => fn && fn());
+        unsubPostListeners = [];
+
+        const postDetailLoading = document.getElementById('postDetailLoading');
+        const postDetailNotFound = document.getElementById('postDetailNotFound');
+        const postDetailContent = document.getElementById('postDetailContent');
+        postDetailContent.classList.add('hidden');
+        postDetailNotFound.classList.add('hidden');
+        postDetailLoading.classList.remove('hidden');
+
+        const unsub1 = onValue(ref(db, 'posts/' + postKey), (snap) => {
+          postDetailLoading.classList.add('hidden');
+          if (!snap.exists()) { postDetailNotFound.classList.remove('hidden'); return; }
+          postDetailContent.classList.remove('hidden');
+          const post = snap.val();
+
+          const pdPoster = document.getElementById('pdPoster');
+          if (post.posters && post.posters.eventPoster) {
+            pdPoster.src = post.posters.eventPoster;
+            pdPoster.classList.remove('hidden');
+          } else {
+            pdPoster.classList.add('hidden');
+          }
+          document.getElementById('pdTitle').textContent = post.title || '';
+          document.getElementById('pdOrganiser').textContent = post.organiser || '';
+          document.getElementById('pdDateLocation').innerHTML =
+            `📅 ${escapeHtml(post.eventDay || '')}, ${escapeHtml(post.eventDate || '')}<br/>📍 ${escapeHtml(post.location || '')}`;
+
+          const pdRegLink = document.getElementById('pdRegLink');
+          if (post.registrationLink) {
+            pdRegLink.href = post.registrationLink;
+            pdRegLink.classList.remove('hidden');
+          } else {
+            pdRegLink.classList.add('hidden');
+          }
+          document.getElementById('likeCount').textContent = post.likesCount || 0;
+          document.getElementById('commentCount').textContent = post.commentsCount || 0;
+        });
+        unsubPostListeners.push(unsub1);
+
+        // ---------- Like (toggle) ----------
+        const btnLike = document.getElementById('btnLike');
+        const likeIcon = document.getElementById('likeIcon');
+        btnLike.onclick = async () => {
+          if (!currentUser) { showBanner('Sila log masuk untuk sukakan acara ini.', true); return; }
+          const likeRef = ref(db, `likes/${postKey}/${currentUser.uid}`);
+          const snap = await get(likeRef);
+          const postCountRef = ref(db, `posts/${postKey}/likesCount`);
+          const countSnap = await get(postCountRef);
+          const currentCount = countSnap.val() || 0;
+
+          if (snap.exists()) {
+            await remove(likeRef);
+            await set(postCountRef, Math.max(0, currentCount - 1));
+          } else {
+            await set(likeRef, true);
+            await set(postCountRef, currentCount + 1);
+          }
+        };
+        // Pantau status like pengguna semasa untuk warna ikon
+        if (currentUser) {
+          const unsub2 = onValue(ref(db, `likes/${postKey}/${currentUser.uid}`), (snap) => {
+            likeIcon.textContent = snap.exists() ? '❤️' : '🤍';
+          });
+          unsubPostListeners.push(unsub2);
+        } else {
+          likeIcon.textContent = '🤍';
+        }
+
+        // ---------- Share (Web Share API + fallback copy link) ----------
+        document.getElementById('btnShare').onclick = async () => {
+          const shareUrl = `${location.origin}${location.pathname}#post/${postKey}`;
+          const shareData = { title: 'Papan Acara', url: shareUrl };
+          if (navigator.share) {
+            try { await navigator.share(shareData); } catch (e) { /* dibatalkan pengguna */ }
+          } else {
+            await navigator.clipboard.writeText(shareUrl);
+            showBanner('Pautan disalin ke clipboard.');
+          }
+        };
+
+        // ---------- Comments ----------
+        const commentForm = document.getElementById('commentForm');
+        const commentLoginPrompt = document.getElementById('commentLoginPrompt');
+        const commentInput = document.getElementById('commentInput');
+        const commentList = document.getElementById('commentList');
+
+        commentForm.classList.toggle('hidden', !currentUser);
+        commentLoginPrompt.classList.toggle('hidden', !!currentUser);
+
+        commentForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const text = commentInput.value.trim();
+          if (!text) return;
+          const newCommentRef = push(ref(db, `comments/${postKey}`));
+          await set(newCommentRef, { userId: currentUser.uid, text, createdAt: Date.now() });
+
+          const countRef = ref(db, `posts/${postKey}/commentsCount`);
+          const countSnap = await get(countRef);
+          await set(countRef, (countSnap.val() || 0) + 1);
+
+          commentInput.value = '';
+        };
+
+        const unsub3 = onValue(ref(db, `comments/${postKey}`), async (snap) => {
+          const data = snap.val() || {};
+          const entries = Object.entries(data).sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
+          if (entries.length === 0) {
+            commentList.innerHTML = '<p class="text-xs text-ink/40">Belum ada komen.</p>';
+            return;
+          }
+          // Ambil nama pemberi komen (users/{uid}) — mudah, tanpa cache pun cukup untuk skala kecil
+          const rendered = await Promise.all(entries.map(async ([, c]) => {
+            const uSnap = await get(ref(db, 'users/' + c.userId));
+            const name = uSnap.exists() ? (uSnap.val().displayName || uSnap.val().username) : 'Pengguna';
+            return `
+              <div class="text-sm border-b border-line pb-2">
+                <span class="font-semibold">${escapeHtml(name)}</span>
+                <span class="text-ink/70">${escapeHtml(c.text)}</span>
+              </div>`;
+          }));
+          commentList.innerHTML = rendered.join('');
+        });
+        unsubPostListeners.push(unsub3);
+      }
+    }
+  </script>
 </body>
 </html>
