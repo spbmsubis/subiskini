@@ -1001,6 +1001,7 @@ function initApp() {
     $('navHeader').classList.toggle('hidden', !user);
     document.querySelector('main.page').classList.toggle('hidden', !user);
     if (user) {
+      startDataListeners();
       authModal.classList.add('hidden');
       const initial = (user.displayName || user.email || '?')[0].toUpperCase();
       const navAvatarInner = user.photoURL ? `<img src="${escAttr(user.photoURL)}" alt="" />` : esc(initial);
@@ -1155,14 +1156,21 @@ function initApp() {
   let usersState = {};
   let openComments = new Set();
   let openMenuKey = null;
-  onValue(ref(db, 'posts'),    snap => { postsState    = snap.val() || {}; renderFeedAndBanner(); });
-  onValue(ref(db, 'likes'),    snap => { likesState    = snap.val() || {}; renderFeedAndBanner(); },
-    err => showBanner('Gagal muat data suka: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
-  onValue(ref(db, 'comments'), snap => { commentsState = snap.val() || {}; renderFeedAndBanner(); },
-    err => showBanner('Gagal muat data komen: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
-  onValue(ref(db, 'votes'),    snap => { votesState    = snap.val() || {}; renderFeedAndBanner(); },
-    err => showBanner('Gagal muat data undi: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
-  onValue(ref(db, 'users'),    snap => { usersState    = snap.val() || {}; renderFeedAndBanner(); });
+  let dataListenersStarted = false;
+  function startDataListeners() {
+    if (dataListenersStarted) return;
+    dataListenersStarted = true;
+    onValue(ref(db, 'posts'),    snap => { postsState    = snap.val() || {}; renderFeedAndBanner(); },
+      err => showBanner('Gagal muat data program: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
+    onValue(ref(db, 'likes'),    snap => { likesState    = snap.val() || {}; renderFeedAndBanner(); },
+      err => showBanner('Gagal muat data suka: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
+    onValue(ref(db, 'comments'), snap => { commentsState = snap.val() || {}; renderFeedAndBanner(); },
+      err => showBanner('Gagal muat data komen: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
+    onValue(ref(db, 'votes'),    snap => { votesState    = snap.val() || {}; renderFeedAndBanner(); },
+      err => showBanner('Gagal muat data undi: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
+    onValue(ref(db, 'users'),    snap => { usersState    = snap.val() || {}; renderFeedAndBanner(); },
+      err => showBanner('Gagal muat data pengguna: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
+  }
 
   document.addEventListener('click', e => {
     if (openMenuKey && !e.target.closest('.fc-menu') && !e.target.closest('.fc-menu-btn')) {
