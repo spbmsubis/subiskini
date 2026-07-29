@@ -697,9 +697,10 @@
             await set(newRef, {
               ...postData,
               posters: { eventPoster: eventPosterUrl, resultPoster: '' },
-              createdAt: Date.now(),
-              likesCount: 0,
-              commentsCount: 0
+              createdAt: Date.now()
+              // Nota: likesCount/commentsCount TIDAK disimpan sebagai nombor.
+              // Ia dikira terus dari children sebenar di likes/{postId} & comments/{postId}
+              // supaya tak boleh dipalsukan (lihat renderFeedAndBanner & renderSinglePost).
             });
           }
 
@@ -726,11 +727,25 @@
       }
 
       // ---------- Render Feed (real-time, reverse-chronological) ----------
+      // Kita simpan 3 sumber data serentak (posts, likes, comments) supaya
+      // bilangan like/komen dikira TERUS dari data sebenar (bukan nombor
+      // yang boleh ditulis terus oleh pengguna nakal — lihat nota keselamatan).
       const highlightBanner = document.getElementById('highlightBanner');
       const highlightScroll = document.getElementById('highlightScroll');
 
-      onValue(ref(db, 'posts'), (snapshot) => {
-        const data = snapshot.val() || {};
+      let postsState = {};
+      let likesState = {};
+      let commentsState = {};
+
+      onValue(ref(db, 'posts'), (snap) => { postsState = snap.val() || {}; renderFeedAndBanner(); });
+      onValue(ref(db, 'likes'), (snap) => { likesState = snap.val() || {}; renderFeedAndBanner(); });
+      onValue(ref(db, 'comments'), (snap) => { commentsState = snap.val() || {}; renderFeedAndBanner(); });
+
+      function bilanganLike(postKey) { return Object.keys(likesState[postKey] || {}).length; }
+      function bilanganKomen(postKey) { return Object.keys(commentsState[postKey] || {}).length; }
+
+      function renderFeedAndBanner() {
+        const data = postsState;
         const entries = Object.entries(data).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
 
         feedEmpty.classList.toggle('hidden', entries.length > 0);
@@ -772,8 +787,8 @@
               </p>
               <div class="flex items-center justify-between mt-3">
                 <div class="flex gap-3 text-xs text-ink/40">
-                  <span>❤ ${post.likesCount || 0}</span>
-                  <span>💬 ${post.commentsCount || 0}</span>
+                  <span>❤ ${bilanganLike(key)}</span>
+                  <span>💬 ${bilanganKomen(key)}</span>
                 </div>
                 <div class="flex gap-2">
                   ${post.registrationLink ? `<a href="${escapeAttr(post.registrationLink)}" target="_blank" rel="noopener" class="text-xs bg-ink text-paper px-3 py-1.5 rounded-md hover:opacity-90">Daftar</a>` : ''}
@@ -795,7 +810,7 @@
         feedList.querySelectorAll('[data-action="delete"]').forEach(btn => {
           btn.addEventListener('click', () => padamPost(btn.dataset.key));
         });
-      });
+      }
 
       function escapeHtml(str) {
         const div = document.createElement('div');
@@ -847,45 +862,36 @@
             `📅 ${escapeHtml(post.eventDay || '')}, ${escapeHtml(post.eventDate || '')}<br/>📍 ${escapeHtml(post.location || '')}`;
 
           const pdRegLink = document.getElementById('pdRegLink');
-          if (post.registrationLink) {
-            pdRegLink.href = post.registrationLink;
-            pdRegLink.classList.remove('hidden');
-          } else {
-            pdRegLink.classList.add('hidden');
-          }
-          document.getElementById('likeCount').textContent = post.likesCount || 0;
-          document.getElementById('commentCount').textContent = post.commentsCount || 0;
+          pdRegLink.classList.toggle('hidden', !post.registrationLink);
+          if (post.registrationLink) pdRegLink.href = post.registrationLink;
+          // Nota: like/comment count TIDAK dibaca dari post.likesCount/commentsCount
+          // (field itu tak lagi disimpan) — dikira terus oleh listener di bawah.
         });
         unsubPostListeners.push(unsub1);
 
-        // ---------- Like (toggle) ----------
+        // ---------- Like (toggle) — count dikira dari children likes/{postId}, bukan nombor tersimpan ----------
         const btnLike = document.getElementById('btnLike');
         const likeIcon = document.getElementById('likeIcon');
+        const likeCountEl = document.getElementById('likeCount');
+
+        const unsubLikes = onValue(ref(db, `likes/${postKey}`), (snap) => {
+          const likes = snap.val() || {};
+          likeCountEl.textContent = Object.keys(likes).length;
+          likeIcon.textContent = (currentUser && likes[currentUser.uid]) ? '❤️' : '🤍';
+        });
+        unsubPostListeners.push(unsubLikes);
+
         btnLike.onclick = async () => {
           if (!currentUser) { showBanner('Sila log masuk untuk sukakan acara ini.', true); return; }
           const likeRef = ref(db, `likes/${postKey}/${currentUser.uid}`);
           const snap = await get(likeRef);
-          const postCountRef = ref(db, `posts/${postKey}/likesCount`);
-          const countSnap = await get(postCountRef);
-          const currentCount = countSnap.val() || 0;
-
           if (snap.exists()) {
             await remove(likeRef);
-            await set(postCountRef, Math.max(0, currentCount - 1));
           } else {
             await set(likeRef, true);
-            await set(postCountRef, currentCount + 1);
           }
+          // Tiada tulis manual ke likesCount — listener di atas auto-kira semula
         };
-        // Pantau status like pengguna semasa untuk warna ikon
-        if (currentUser) {
-          const unsub2 = onValue(ref(db, `likes/${postKey}/${currentUser.uid}`), (snap) => {
-            likeIcon.textContent = snap.exists() ? '❤️' : '🤍';
-          });
-          unsubPostListeners.push(unsub2);
-        } else {
-          likeIcon.textContent = '🤍';
-        }
 
         // ---------- Share (Web Share API + fallback copy link) ----------
         document.getElementById('btnShare').onclick = async () => {
@@ -914,17 +920,16 @@
           if (!text) return;
           const newCommentRef = push(ref(db, `comments/${postKey}`));
           await set(newCommentRef, { userId: currentUser.uid, text, createdAt: Date.now() });
-
-          const countRef = ref(db, `posts/${postKey}/commentsCount`);
-          const countSnap = await get(countRef);
-          await set(countRef, (countSnap.val() || 0) + 1);
-
+          // Tiada tulis manual ke commentsCount — commentCount el dikemaskini oleh listener di bawah
           commentInput.value = '';
         };
+
+        const commentCountEl = document.getElementById('commentCount');
 
         const unsub3 = onValue(ref(db, `comments/${postKey}`), async (snap) => {
           const data = snap.val() || {};
           const entries = Object.entries(data).sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
+          commentCountEl.textContent = entries.length;
           if (entries.length === 0) {
             commentList.innerHTML = '<p class="text-xs text-ink/40">Belum ada komen.</p>';
             return;
