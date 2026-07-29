@@ -293,7 +293,10 @@
     background: var(--ink); color: var(--paper);
     display: flex; align-items: center; justify-content: center;
     font-size: 1.5rem; font-family: 'DM Serif Display', serif;
-    flex-shrink: 0;
+    flex-shrink: 0; overflow: hidden;
+  }
+  .avatar-lg img, .nav-avatar img {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
   }
   .stat-box {
     background: var(--white); border: 1px solid var(--line);
@@ -366,7 +369,7 @@
     width: 32px; height: 32px; border-radius: 50%;
     background: var(--amber); color: #fff;
     display: flex; align-items: center; justify-content: center;
-    font-size: .8rem; font-weight: 700; flex-shrink: 0;
+    font-size: .8rem; font-weight: 700; flex-shrink: 0; overflow: hidden;
   }
 
   /* date chip */
@@ -476,13 +479,37 @@
           <div style="flex:1;min-width:0;">
             <h2 id="profileDisplayName" class="serif" style="font-size:1.25rem;"></h2>
             <p id="profileUsername" style="font-size:.8rem;color:var(--muted);margin-top:.1rem;"></p>
+            <p id="profileSchoolDisplay" style="font-size:.8rem;color:var(--muted);margin-top:.1rem;"></p>
             <p id="profileBioDisplay" style="font-size:.85rem;color:var(--ink);margin-top:.5rem;"></p>
           </div>
-          <button id="btnEditBio" class="btn btn-outline btn-sm hidden">✏ Sunting Bio</button>
+          <button id="btnEditBio" class="btn btn-outline btn-sm hidden">✏ Sunting Profil</button>
         </div>
 
         <form id="editBioForm" class="hidden" style="margin-top:1rem;">
-          <textarea id="profileBioInput" rows="3" placeholder="Tulis bio ringkas…" class="input"></textarea>
+          <div class="field">
+            <label>Gambar Profil</label>
+            <div class="poster-upload-area" id="avatarUploadArea">
+              <input type="file" accept="image/*" id="profileAvatarInput" />
+              <div id="avatarUploadHint">
+                <div style="font-size:1.5rem;margin-bottom:.4rem;">🖼</div>
+                <div style="font-size:.8rem;font-weight:600;color:var(--ink);">Klik atau seret gambar di sini</div>
+                <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">JPG, PNG, WebP — opsyenal</div>
+              </div>
+              <img id="profileAvatarPreview" class="poster-preview" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Nama Papar</label>
+            <input type="text" id="profileNameInput" placeholder="Nama anda" class="input" />
+          </div>
+          <div class="field">
+            <label>Nama Sekolah</label>
+            <input type="text" id="profileSchoolInput" placeholder="cth: SK Subis" class="input" />
+          </div>
+          <div class="field">
+            <label>Bio</label>
+            <textarea id="profileBioInput" rows="3" placeholder="Tulis bio ringkas…" class="input"></textarea>
+          </div>
           <div style="display:flex;gap:.5rem;margin-top:.5rem;">
             <button type="submit" class="btn btn-ink btn-sm">Simpan</button>
             <button type="button" id="btnCancelEditBio" class="btn btn-outline btn-sm">Batal</button>
@@ -592,7 +619,7 @@
           <input type="url" id="postRegLink" placeholder="https://…" class="input" />
         </div>
         <div class="field">
-          <label>Poster Acara</label>
+          <label>Poster Acara (opsyenal)</label>
           <div class="poster-upload-area" id="posterUploadArea">
             <input type="file" accept="image/*" id="postEventPoster" />
             <div id="posterUploadHint">
@@ -706,7 +733,7 @@ function initApp() {
       await updateProfile(cred.user, { displayName });
       await set(ref(db, 'users/' + cred.user.uid), {
         username: $('regEmail').value.split('@')[0],
-        displayName, photoURL: cred.user.photoURL || '', bio: ''
+        displayName, photoURL: cred.user.photoURL || '', bio: '', school: ''
       });
       authModal.classList.add('hidden');
       showBanner('Selamat datang, ' + displayName + '!');
@@ -724,7 +751,7 @@ function initApp() {
         await set(ref(db, 'users/' + u.uid), {
           username: (u.email || '').split('@')[0],
           displayName: u.displayName || '',
-          photoURL: u.photoURL || '', bio: ''
+          photoURL: u.photoURL || '', bio: '', school: ''
         });
       }
       authModal.classList.add('hidden');
@@ -737,10 +764,11 @@ function initApp() {
     currentUser = user;
     if (user) {
       const initial = (user.displayName || user.email || '?')[0].toUpperCase();
+      const navAvatarInner = user.photoURL ? `<img src="${escAttr(user.photoURL)}" alt="" />` : esc(initial);
       navAuthArea.innerHTML = `
         <div style="display:flex;align-items:center;gap:.6rem;">
           <a href="#profile/${user.uid}" style="display:flex;align-items:center;gap:.5rem;text-decoration:none;color:var(--paper);">
-            <div class="nav-avatar">${esc(initial)}</div>
+            <div class="nav-avatar">${navAvatarInner}</div>
             <span style="font-size:.8rem;font-weight:600;display:none;" class="sm-show">${esc(user.displayName || user.email || '')}</span>
           </a>
           <button id="btnLogout" class="btn btn-ghost btn-sm">Log Keluar</button>
@@ -773,9 +801,16 @@ function initApp() {
   }
 
   // ── PROFILE ──
+  function setAvatarEl(el, name, photoURL) {
+    const initial = (name || '?')[0].toUpperCase();
+    el.innerHTML = photoURL ? `<img src="${escAttr(photoURL)}" alt="" />` : esc(initial);
+  }
+
   async function renderProfile(uid) {
     const loading = $('profileLoading'), content = $('profileContent'), notFound = $('profileNotFound');
     const editBioForm = $('editBioForm'), bioInput = $('profileBioInput');
+    const nameInput = $('profileNameInput'), schoolInput = $('profileSchoolInput');
+    const avatarInput = $('profileAvatarInput'), avatarPreview = $('profileAvatarPreview'), avatarHint = $('avatarUploadHint');
     const btnEdit = $('btnEditBio'), btnCancel = $('btnCancelEditBio');
     [content, notFound, editBioForm].forEach(e => e.classList.add('hidden'));
     loading.classList.remove('hidden');
@@ -786,24 +821,75 @@ function initApp() {
       if (!snap.exists()) { notFound.classList.remove('hidden'); return; }
       const d = snap.val();
       content.classList.remove('hidden');
-      const initial = (d.displayName || d.username || '?')[0].toUpperCase();
-      $('profileAvatar').textContent = initial;
+      setAvatarEl($('profileAvatar'), d.displayName || d.username, d.photoURL);
       $('profileDisplayName').textContent = d.displayName || d.username || '(tiada nama)';
       $('profileUsername').textContent = '@' + (d.username || uid.slice(0, 8));
+      $('profileSchoolDisplay').textContent = d.school || '';
       $('profileBioDisplay').textContent = d.bio || 'Tiada bio lagi.';
 
       const isOwner = currentUser && currentUser.uid === uid;
       btnEdit.classList.toggle('hidden', !isOwner);
 
-      btnEdit.onclick = () => { bioInput.value = d.bio || ''; editBioForm.classList.remove('hidden'); };
+      avatarInput.onchange = () => {
+        const f = avatarInput.files[0];
+        if (!f) { avatarPreview.style.display = 'none'; avatarHint.style.display = ''; return; }
+        avatarPreview.src = URL.createObjectURL(f);
+        avatarPreview.style.display = 'block';
+        avatarHint.style.display = 'none';
+      };
+
+      btnEdit.onclick = () => {
+        nameInput.value = d.displayName || '';
+        schoolInput.value = d.school || '';
+        bioInput.value = d.bio || '';
+        avatarInput.value = '';
+        avatarPreview.style.display = 'none'; avatarHint.style.display = '';
+        editBioForm.classList.remove('hidden');
+      };
       btnCancel.onclick = () => editBioForm.classList.add('hidden');
       editBioForm.onsubmit = async e => {
         e.preventDefault();
-        const bio = bioInput.value.trim();
-        await update(ref(db, 'users/' + uid), { bio });
-        $('profileBioDisplay').textContent = bio || 'Tiada bio lagi.';
-        editBioForm.classList.add('hidden');
-        showBanner('Bio dikemaskini.');
+        const btnSave = editBioForm.querySelector('button[type="submit"]');
+        btnSave.disabled = true;
+        try {
+          const displayName = nameInput.value.trim();
+          const school = schoolInput.value.trim();
+          const bio = bioInput.value.trim();
+          const updates = { displayName, school, bio };
+
+          const file = avatarInput.files[0];
+          if (file) {
+            const compressed = await imageCompression(file, { maxSizeMB: .3, maxWidthOrHeight: 500, useWebWorker: true, fileType: 'image/webp' });
+            const fd = new FormData();
+            fd.append('file', compressed);
+            fd.append('upload_preset', CLOUDINARY.uploadPreset);
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/image/upload`, { method: 'POST', body: fd });
+            if (!res.ok) throw new Error('Muat naik gambar gagal.');
+            updates.photoURL = (await res.json()).secure_url;
+          }
+
+          await update(ref(db, 'users/' + uid), updates);
+          if (currentUser && currentUser.uid === uid) {
+            await updateProfile(currentUser, {
+              displayName: displayName || currentUser.displayName || '',
+              photoURL: updates.photoURL || currentUser.photoURL || ''
+            });
+          }
+
+          setAvatarEl($('profileAvatar'), displayName || d.username, updates.photoURL || d.photoURL);
+          $('profileDisplayName').textContent = displayName || d.username || '(tiada nama)';
+          $('profileSchoolDisplay').textContent = school || '';
+          $('profileBioDisplay').textContent = bio || 'Tiada bio lagi.';
+          d.displayName = displayName; d.school = school; d.bio = bio;
+          if (updates.photoURL) d.photoURL = updates.photoURL;
+
+          editBioForm.classList.add('hidden');
+          showBanner('Profil dikemaskini.');
+        } catch (err) {
+          showBanner(err.message || 'Gagal kemaskini profil.', true);
+        } finally {
+          btnSave.disabled = false;
+        }
       };
       $('statEvents').textContent = '0';
       $('statLikes').textContent = '0';
@@ -926,12 +1012,11 @@ function initApp() {
         posterPreview.style.display = 'block';
         posterHint.style.display = 'none';
       }
-      posterInput.removeAttribute('required');
     } else {
       $('postModalTitle').textContent = 'Cipta Acara';
       btnSubmitPost.textContent = 'Cipta Acara';
-      posterInput.setAttribute('required', 'required');
     }
+    posterInput.removeAttribute('required');
     postModal.classList.remove('hidden');
   }
 
