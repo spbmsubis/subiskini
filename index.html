@@ -463,7 +463,7 @@
 <body>
 
 <!-- ═══ NAV ═══ -->
-<header class="nav">
+<header class="nav hidden" id="navHeader">
   <div class="nav-inner">
     <a href="#" class="nav-brand serif" style="text-decoration:none;display:flex;align-items:center;gap:.5rem;">
       <span id="btnHome" title="Kembali ke News Feed" style="font-size:1rem;">🏠</span>
@@ -476,7 +476,7 @@
 </header>
 
 <!-- ═══ MAIN ═══ -->
-<main class="page">
+<main class="page hidden">
   <div id="statusBanner" class="hidden"></div>
 
   <!-- VIEW: FEED -->
@@ -684,7 +684,7 @@
 </footer>
 
 <!-- ═══ MODAL: LOGIN/DAFTAR ═══ -->
-<div id="authModal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+<div id="authModal" class="modal-overlay" onclick="if(event.target===this && document.body.classList.contains('is-authed'))this.classList.add('hidden')">
   <div class="modal-box">
     <button id="btnCloseModal" class="modal-close">✕</button>
     <h2 class="serif" style="font-size:1.3rem;margin-bottom:1.25rem;">Masuk ke SubisKini</h2>
@@ -921,7 +921,7 @@ function initApp() {
 
   // ── AUTH MODAL ──
   $('btnOpenLogin').addEventListener('click', () => { clearAuthErr(); authModal.classList.remove('hidden'); });
-  $('btnCloseModal').addEventListener('click', () => authModal.classList.add('hidden'));
+  $('btnCloseModal').addEventListener('click', () => { if (currentUser) authModal.classList.add('hidden'); });
 
   // Auth tabs
   document.querySelectorAll('.auth-tab').forEach(tab => {
@@ -997,7 +997,11 @@ function initApp() {
   // Auth state
   onAuthStateChanged(auth, user => {
     currentUser = user;
+    document.body.classList.toggle('is-authed', !!user);
+    $('navHeader').classList.toggle('hidden', !user);
+    document.querySelector('main.page').classList.toggle('hidden', !user);
     if (user) {
+      authModal.classList.add('hidden');
       const initial = (user.displayName || user.email || '?')[0].toUpperCase();
       const navAvatarInner = user.photoURL ? `<img src="${escAttr(user.photoURL)}" alt="" />` : esc(initial);
       navAuthArea.innerHTML = `
@@ -1010,6 +1014,8 @@ function initApp() {
         </div>`;
       $('btnLogout').addEventListener('click', () => { signOut(auth); showBanner('Anda telah log keluar.'); });
     } else {
+      clearAuthErr();
+      authModal.classList.remove('hidden');
       navAuthArea.innerHTML = `<button id="btnOpenLogin" class="btn btn-amber">Log Masuk</button>`;
       $('btnOpenLogin').addEventListener('click', () => { clearAuthErr(); authModal.classList.remove('hidden'); });
     }
