@@ -473,8 +473,38 @@
   .gallery-section-title { font-size: .75rem; font-weight: 700; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; margin-top: 1.5rem; }
 
   /* ── POST TYPE SELECTOR ── */
-  .post-type-btn { font-size: .78rem; }
-  .post-type-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  /* ── COMPOSER (inline, gaya tab) ── */
+  .composer-card {
+    background: var(--white); border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(14,28,42,.06);
+    overflow: hidden; margin-bottom: 1.5rem;
+  }
+  .composer-tabs { display: flex; border-bottom: 1px solid var(--line); }
+  .composer-tab {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: .4rem;
+    padding: .8rem .5rem; font-size: .82rem; font-weight: 600; color: var(--muted);
+    background: transparent; border: none; border-bottom: 2px solid transparent;
+    cursor: pointer; transition: all .15s; font-family: inherit;
+  }
+  .composer-tab:hover { background: var(--paper); }
+  .composer-tab.active { color: var(--amber); border-bottom-color: var(--amber); background: rgba(212,137,58,.06); }
+  .composer-body { padding: 1.1rem 1.25rem 1.25rem; }
+
+  /* ── PILL SHAPES (badge/butang gaya rounded-full) ── */
+  .badge { border-radius: 999px !important; padding: .3rem .8rem !important; }
+  .btn { border-radius: 999px; }
+  .btn-sm { border-radius: 999px; }
+  .date-chip.pill { background: var(--paper); padding: .3rem .75rem; border-radius: 999px; }
+  #postCategory, .input[type="text"], .input[type="url"], .input[type="date"] { border-radius: 12px; }
+
+  /* ── HIGHLIGHT NAV ARROWS ── */
+  .highlight-nav-btn {
+    width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.08); color: var(--paper); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 1rem;
+    transition: background .15s;
+  }
+  .highlight-nav-btn:hover { background: rgba(255,255,255,.18); }
 
   /* ── POLL ── */
   .poll-option-row { display: flex; align-items: center; gap: .5rem; }
@@ -512,14 +542,136 @@
   <section id="viewFeed">
     <!-- Highlight banner -->
     <div id="highlightBanner" class="highlight-banner hidden" style="margin-bottom:1.5rem;">
-      <p style="font-size:.7rem;font-weight:700;letter-spacing:.1em;color:rgba(246,243,238,.5);text-transform:uppercase;margin-bottom:.75rem;">🔥 Program Akan Datang</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+        <p style="font-size:.7rem;font-weight:700;letter-spacing:.1em;color:rgba(246,243,238,.5);text-transform:uppercase;margin:0;">🔥 Program Akan Datang</p>
+        <div style="display:flex;gap:.4rem;">
+          <button type="button" id="btnHlPrev" class="highlight-nav-btn" title="Sebelum">‹</button>
+          <button type="button" id="btnHlNext" class="highlight-nav-btn" title="Seterus">›</button>
+        </div>
+      </div>
       <div id="highlightScroll" class="highlight-scroll"></div>
+    </div>
+
+    <!-- Composer (Hebahan/Tinjauan/Soalan) -->
+    <div class="composer-card" id="composerCard">
+      <div class="composer-tabs" id="postTypeSelector">
+        <button type="button" class="composer-tab post-type-btn active" data-type="event">📅 Program</button>
+        <button type="button" class="composer-tab post-type-btn" data-type="poll">📊 Tinjauan</button>
+        <button type="button" class="composer-tab post-type-btn" data-type="question">❓ Soalan</button>
+      </div>
+      <div class="composer-body" id="postFormWrap">
+        <div id="postError" class="alert alert-err hidden"></div>
+        <div id="postProgress" class="progress-msg hidden"></div>
+        <form id="postForm">
+          <input type="hidden" id="postId" />
+          <input type="hidden" id="postType" value="event" />
+
+          <div class="field">
+            <label id="postTitleLabel">Tajuk Program *</label>
+            <input type="text" required id="postTitle" placeholder="cth: Pertandingan Robotik Kebangsaan" class="input" />
+          </div>
+
+          <div id="pollFields" class="hidden">
+            <div class="field">
+              <label>Pilihan Tinjauan * (min 2, maks 6)</label>
+              <div id="pollOptionsList" style="display:flex;flex-direction:column;gap:.5rem;"></div>
+              <button type="button" id="btnAddPollOption" class="btn btn-outline btn-sm" style="margin-top:.5rem;">+ Tambah Pilihan</button>
+            </div>
+          </div>
+
+          <div id="questionFields" class="hidden">
+            <div class="field">
+              <label>Butiran Tambahan (opsyenal)</label>
+              <textarea id="postQuestionBody" rows="3" placeholder="Huraikan soalan anda dengan lebih lanjut…" class="input"></textarea>
+            </div>
+          </div>
+
+          <div id="eventOnlyFields">
+          <div class="field">
+            <label>Penganjur *</label>
+            <input type="text" required id="postOrganiser" placeholder="cth: Kelab Robotik Sibu" class="input" />
+          </div>
+          <div class="field">
+            <label>Tag / Kategori *</label>
+            <select required id="postCategory" class="input">
+              <option value="" disabled selected>Pilih kategori…</option>
+              <option value="Sukan">Sukan</option>
+              <option value="STEM">STEM</option>
+              <option value="Seni">Seni</option>
+              <option value="PBB">PBB</option>
+              <option value="Penggalakan">Penggalakan</option>
+              <option value="KOA SJKC">KOA SJKC</option>
+              <option value="KOA BM">KOA BM</option>
+              <option value="KOA BI">KOA BI</option>
+              <option value="Lain-lain">Lain-lain</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+            <div class="field">
+              <label>Tarikh Program *</label>
+              <input type="date" required id="postEventDate" class="input" />
+            </div>
+            <div class="field">
+              <label>Lokasi *</label>
+              <input type="text" required id="postLocation" placeholder="cth: Dewan Serbaguna Subis" class="input" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Pautan Pendaftaran</label>
+            <input type="url" id="postRegLink" placeholder="https://…" class="input" />
+          </div>
+          <div class="field">
+            <label>Poster Program (opsyenal, maks 6)</label>
+            <div class="poster-upload-area" id="posterUploadArea">
+              <input type="file" accept="image/*" multiple id="postEventPoster" />
+              <div id="posterUploadHint">
+                <div style="font-size:1.5rem;margin-bottom:.4rem;">🖼</div>
+                <div style="font-size:.8rem;font-weight:600;color:var(--ink);">Klik atau seret gambar di sini</div>
+                <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">JPG, PNG, WebP — maksimum 6 gambar</div>
+              </div>
+            </div>
+            <div id="postEventPosterPreview" class="multi-preview-grid"></div>
+          </div>
+          <div class="field">
+            <label>Gambar Aktiviti (opsyenal, maks 6)</label>
+            <div class="poster-upload-area" id="activityUploadArea">
+              <input type="file" accept="image/*" multiple id="postActivityPhotos" />
+              <div id="activityUploadHint">
+                <div style="font-size:1.5rem;margin-bottom:.4rem;">📷</div>
+                <div style="font-size:.8rem;font-weight:600;color:var(--ink);">Klik atau seret gambar aktiviti</div>
+                <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">JPG, PNG, WebP — maksimum 6 gambar</div>
+              </div>
+            </div>
+            <div id="postActivityPhotosPreview" class="multi-preview-grid"></div>
+          </div>
+          <div class="field">
+            <label>Hebahan Pemenang (opsyenal, maks 6)</label>
+            <div class="poster-upload-area" id="winnerUploadArea">
+              <input type="file" accept="image/*" multiple id="postWinnerPhotos" />
+              <div id="winnerUploadHint">
+                <div style="font-size:1.5rem;margin-bottom:.4rem;">🏆</div>
+                <div style="font-size:.8rem;font-weight:600;color:var(--ink);">Klik atau seret gambar pemenang</div>
+                <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">JPG, PNG, WebP — maksimum 6 gambar</div>
+              </div>
+            </div>
+            <div id="postWinnerPhotosPreview" class="multi-preview-grid"></div>
+          </div>
+          <label style="display:flex;align-items:center;gap:.6rem;font-size:.85rem;cursor:pointer;margin-bottom:1rem;color:var(--ink);">
+            <input type="checkbox" id="postHighlighted" style="width:16px;height:16px;accent-color:var(--amber);" />
+            Sertakan dalam banner "Program Akan Datang"
+          </label>
+          </div>
+          <button type="submit" id="btnSubmitPost" class="btn btn-amber" style="width:100%;justify-content:center;padding:.7rem;">
+            Hebahkan
+          </button>
+        </form>
+      </div>
     </div>
 
     <div class="feed-header">
       <span class="feed-title">📋 News Feed</span>
-      <button id="btnNewPost" class="btn btn-ink hidden">+ Create Post</button>
     </div>
+
 
     <div id="feedFilterBar" class="hidden" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:.65rem 1rem;margin-bottom:1rem;">
       <span id="feedFilterText" style="font-size:.82rem;color:var(--ink);"></span>
@@ -773,129 +925,13 @@
   <span id="lightboxCounter" class="lightbox-counter"></span>
 </div>
 
-<div id="postModal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')" style="align-items:flex-start;padding-top:2rem;">
+<div id="postModal" class="modal-overlay hidden" onclick="if(event.target===this)closeEditModal()" style="align-items:flex-start;padding-top:2rem;">
   <div class="post-modal-box">
     <div class="post-modal-hdr">
-      <h3 id="postModalTitle" class="serif" style="font-size:1.1rem;">Create Post</h3>
+      <h3 id="postModalTitle" class="serif" style="font-size:1.1rem;">Edit Post</h3>
       <button id="btnClosePostModal" class="modal-close" style="position:static;">✕</button>
     </div>
-    <div class="post-modal-body">
-      <div id="postError" class="alert alert-err hidden"></div>
-      <div id="postProgress" class="progress-msg hidden"></div>
-
-      <form id="postForm">
-        <input type="hidden" id="postId" />
-
-        <div class="field">
-          <label>Jenis Post *</label>
-          <div id="postTypeSelector" style="display:flex;gap:.5rem;">
-            <button type="button" class="btn btn-outline btn-sm post-type-btn" data-type="event" style="flex:1;">📅 Program</button>
-            <button type="button" class="btn btn-outline btn-sm post-type-btn" data-type="poll" style="flex:1;">📊 Tinjauan</button>
-            <button type="button" class="btn btn-outline btn-sm post-type-btn" data-type="question" style="flex:1;">❓ Soalan</button>
-          </div>
-          <input type="hidden" id="postType" value="event" />
-        </div>
-
-        <div class="field">
-          <label id="postTitleLabel">Tajuk Program *</label>
-          <input type="text" required id="postTitle" placeholder="cth: Pertandingan Robotik Kebangsaan" class="input" />
-        </div>
-
-        <div id="pollFields" class="hidden">
-          <div class="field">
-            <label>Pilihan Tinjauan * (min 2, maks 6)</label>
-            <div id="pollOptionsList" style="display:flex;flex-direction:column;gap:.5rem;"></div>
-            <button type="button" id="btnAddPollOption" class="btn btn-outline btn-sm" style="margin-top:.5rem;">+ Tambah Pilihan</button>
-          </div>
-        </div>
-
-        <div id="questionFields" class="hidden">
-          <div class="field">
-            <label>Butiran Tambahan (opsyenal)</label>
-            <textarea id="postQuestionBody" rows="3" placeholder="Huraikan soalan anda dengan lebih lanjut…" class="input"></textarea>
-          </div>
-        </div>
-
-        <div id="eventOnlyFields">
-        <div class="field">
-          <label>Penganjur *</label>
-          <input type="text" required id="postOrganiser" placeholder="cth: Kelab Robotik Sibu" class="input" />
-        </div>
-        <div class="field">
-          <label>Tag / Kategori *</label>
-          <select required id="postCategory" class="input">
-            <option value="" disabled selected>Pilih kategori…</option>
-            <option value="Sukan">Sukan</option>
-            <option value="STEM">STEM</option>
-            <option value="Seni">Seni</option>
-            <option value="PBB">PBB</option>
-            <option value="Penggalakan">Penggalakan</option>
-            <option value="KOA SJKC">KOA SJKC</option>
-            <option value="KOA BM">KOA BM</option>
-            <option value="KOA BI">KOA BI</option>
-            <option value="Lain-lain">Lain-lain</option>
-          </select>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
-          <div class="field">
-            <label>Tarikh Program *</label>
-            <input type="date" required id="postEventDate" class="input" />
-          </div>
-          <div class="field">
-            <label>Lokasi *</label>
-            <input type="text" required id="postLocation" placeholder="cth: Dewan Serbaguna Subis" class="input" />
-          </div>
-        </div>
-        <div class="field">
-          <label>Pautan Pendaftaran</label>
-          <input type="url" id="postRegLink" placeholder="https://…" class="input" />
-        </div>
-        <div class="field">
-          <label>Poster Program (opsyenal, maks 6)</label>
-          <div class="poster-upload-area" id="posterUploadArea">
-            <input type="file" accept="image/*" multiple id="postEventPoster" />
-            <div id="posterUploadHint">
-              <div style="font-size:1.5rem;margin-bottom:.4rem;">🖼</div>
-              <div style="font-size:.8rem;font-weight:600;color:var(--ink);">Klik atau seret gambar di sini</div>
-              <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">JPG, PNG, WebP — maksimum 6 gambar</div>
-            </div>
-          </div>
-          <div id="postEventPosterPreview" class="multi-preview-grid"></div>
-        </div>
-        <div class="field">
-          <label>Gambar Aktiviti (opsyenal, maks 6)</label>
-          <div class="poster-upload-area" id="activityUploadArea">
-            <input type="file" accept="image/*" multiple id="postActivityPhotos" />
-            <div id="activityUploadHint">
-              <div style="font-size:1.5rem;margin-bottom:.4rem;">📷</div>
-              <div style="font-size:.8rem;font-weight:600;color:var(--ink);">Klik atau seret gambar aktiviti</div>
-              <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">JPG, PNG, WebP — maksimum 6 gambar</div>
-            </div>
-          </div>
-          <div id="postActivityPhotosPreview" class="multi-preview-grid"></div>
-        </div>
-        <div class="field">
-          <label>Hebahan Pemenang (opsyenal, maks 6)</label>
-          <div class="poster-upload-area" id="winnerUploadArea">
-            <input type="file" accept="image/*" multiple id="postWinnerPhotos" />
-            <div id="winnerUploadHint">
-              <div style="font-size:1.5rem;margin-bottom:.4rem;">🏆</div>
-              <div style="font-size:.8rem;font-weight:600;color:var(--ink);">Klik atau seret gambar pemenang</div>
-              <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">JPG, PNG, WebP — maksimum 6 gambar</div>
-            </div>
-          </div>
-          <div id="postWinnerPhotosPreview" class="multi-preview-grid"></div>
-        </div>
-        <label style="display:flex;align-items:center;gap:.6rem;font-size:.85rem;cursor:pointer;margin-bottom:1rem;color:var(--ink);">
-          <input type="checkbox" id="postHighlighted" style="width:16px;height:16px;accent-color:var(--amber);" />
-          Sertakan dalam banner "Program Akan Datang"
-        </label>
-        </div>
-        <button type="submit" id="btnSubmitPost" class="btn btn-amber" style="width:100%;justify-content:center;padding:.7rem;">
-          Create Post
-        </button>
-      </form>
-    </div>
+    <div class="post-modal-body" id="postModalBody"></div>
   </div>
 </div>
 
@@ -927,8 +963,13 @@ function initApp() {
   const feedFilterText = $('feedFilterText');
   const highlightBanner = $('highlightBanner');
   const highlightScroll = $('highlightScroll');
-  const btnNewPost     = $('btnNewPost');
+  $('btnHlPrev').addEventListener('click', () => highlightScroll.scrollBy({ left: -220, behavior: 'smooth' }));
+  $('btnHlNext').addEventListener('click', () => highlightScroll.scrollBy({ left: 220, behavior: 'smooth' }));
   const postModal      = $('postModal');
+  const postModalTitleEl = $('postModalTitle');
+  const postModalBody  = $('postModalBody');
+  const postFormWrap   = $('postFormWrap');
+  const composerCard   = $('composerCard');
   const postForm       = $('postForm');
   const postError      = $('postError');
   const postProgress   = $('postProgress');
@@ -1057,7 +1098,6 @@ function initApp() {
       navAuthArea.innerHTML = `<button id="btnOpenLogin" class="btn btn-amber">Log Masuk</button>`;
       $('btnOpenLogin').addEventListener('click', () => { clearAuthErr(); authModal.classList.remove('hidden'); });
     }
-    btnNewPost.classList.toggle('hidden', !user);
     route();
   });
 
@@ -1554,9 +1594,20 @@ function initApp() {
       btn.addEventListener('click', () => deleteComment(btn.dataset.postKey, btn.dataset.commentKey)));
   }
 
-  // ── POST MODAL ──
-  btnNewPost.addEventListener('click', () => openPostModal());
-  $('btnClosePostModal').addEventListener('click', () => postModal.classList.add('hidden'));
+  // ── POST MODAL (guna untuk EDIT sahaja; composer inline guna untuk create) ──
+  function closeEditModal() {
+    composerCard.appendChild(postFormWrap);
+    postModal.classList.add('hidden');
+    postModalTitleEl.textContent = 'Edit Post';
+    btnSubmitPost.textContent = 'Hebahkan';
+    postForm.reset();
+    [posterPreview, activityPreview, winnerPreview].forEach(p => { p.innerHTML = ''; p.style.display = 'none'; });
+    [posterHint, activityHint, winnerHint].forEach(h => h.style.display = '');
+    $('postId').value = '';
+    setPostType('event');
+    clearPostErr(); showPostProg('');
+  }
+  $('btnClosePostModal').addEventListener('click', closeEditModal);
 
   function bindMultiPreview(input, preview, hint) {
     input.addEventListener('change', () => {
@@ -1647,6 +1698,7 @@ function initApp() {
     btn.addEventListener('click', () => setPostType(btn.dataset.type)));
 
   function openPostModal(existing = null, postKey = null) {
+    postModalBody.appendChild(postFormWrap);
     clearPostErr(); showPostProg('');
     postForm.reset();
     [posterPreview, activityPreview, winnerPreview].forEach(p => { p.innerHTML = ''; p.style.display = 'none'; });
@@ -1673,8 +1725,8 @@ function initApp() {
       showExistingGallery(activityPreview, activityHint, existing.activityImages);
       showExistingGallery(winnerPreview, winnerHint, existing.winnerImages);
     } else {
-      $('postModalTitle').textContent = 'Create Post';
-      btnSubmitPost.textContent = 'Create Post';
+      $('postModalTitle').textContent = 'Edit Post';
+      btnSubmitPost.textContent = 'Simpan Perubahan';
       resetPollOptions();
       $('postQuestionBody').value = '';
     }
@@ -1754,7 +1806,14 @@ function initApp() {
       }
 
       showPostProg('');
-      postModal.classList.add('hidden');
+      if (isEdit) {
+        closeEditModal();
+      } else {
+        postForm.reset();
+        [posterPreview, activityPreview, winnerPreview].forEach(p => { p.innerHTML = ''; p.style.display = 'none'; });
+        [posterHint, activityHint, winnerHint].forEach(h => h.style.display = '');
+        setPostType('event');
+      }
       showBanner(isEdit ? 'Post dikemaskini.' : 'Post berjaya dicipta! 🎉');
     } catch (err) {
       showPostProg(''); showPostErr(err.message || 'Ralat menyimpan post.');
