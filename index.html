@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SubisKini — Papan Acara</title>
+<title>SubisKini — Papan Komuniti</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -435,6 +435,29 @@
     display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700;
   }
   .fc-avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* ── MULTI IMAGE UPLOAD ── */
+  .multi-preview-grid { display: none; grid-template-columns: repeat(3,1fr); gap: .5rem; margin-top: .75rem; }
+  .multi-preview-grid img { width: 100%; height: 70px; object-fit: cover; border-radius: 8px; }
+  .gallery-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: .5rem; margin-top: .75rem; }
+  .gallery-grid img { width: 100%; height: 100px; object-fit: cover; border-radius: 8px; cursor: pointer; }
+  .gallery-section-title { font-size: .75rem; font-weight: 700; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; margin-top: 1.5rem; }
+
+  /* ── POST TYPE SELECTOR ── */
+  .post-type-btn { font-size: .78rem; }
+  .post-type-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* ── POLL ── */
+  .poll-option-row { display: flex; align-items: center; gap: .5rem; }
+  .poll-option-row input { flex: 1; }
+  .poll-remove-opt { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: .2rem .4rem; }
+  .poll-bar-wrap { position: relative; border: 1px solid var(--line); border-radius: 8px; padding: .5rem .75rem; margin-bottom: .5rem; cursor: pointer; overflow: hidden; background: var(--white); }
+  .poll-bar-wrap:hover { border-color: var(--amber); }
+  .poll-bar-wrap.voted { border-color: var(--amber); }
+  .poll-bar-fill { position: absolute; inset: 0; background: #FEF3E2; z-index: 0; transition: width .3s ease; }
+  .poll-bar-content { position: relative; z-index: 1; display: flex; justify-content: space-between; font-size: .82rem; color: var(--ink); }
+  .poll-meta { font-size: .72rem; color: var(--muted); margin-top: .4rem; }
+  .question-badge { display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .05em; color: var(--amber); text-transform: uppercase; margin-bottom: .3rem; }
 </style>
 </head>
 <body>
@@ -442,8 +465,9 @@
 <!-- ═══ NAV ═══ -->
 <header class="nav">
   <div class="nav-inner">
-    <a href="#" class="nav-brand serif" style="text-decoration:none;">
-      SubisKini <span>Acara</span>
+    <a href="#" class="nav-brand serif" style="text-decoration:none;display:flex;align-items:center;gap:.5rem;">
+      <span id="btnHome" title="Kembali ke News Feed" style="font-size:1rem;">🏠</span>
+      SubisKini<span></span>
     </a>
     <div id="navAuthArea">
       <button id="btnOpenLogin" class="btn btn-amber">Log Masuk</button>
@@ -464,8 +488,13 @@
     </div>
 
     <div class="feed-header">
-      <span class="feed-title">📋 Feed Acara</span>
-      <button id="btnNewPost" class="btn btn-ink hidden">+ Cipta Acara</button>
+      <span class="feed-title">📋 News Feed</span>
+      <button id="btnNewPost" class="btn btn-ink hidden">+ Create Post</button>
+    </div>
+
+    <div id="feedFilterBar" class="hidden" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:.65rem 1rem;margin-bottom:1rem;">
+      <span id="feedFilterText" style="font-size:.82rem;color:var(--ink);"></span>
+      <a href="#" style="font-size:.78rem;color:var(--amber);font-weight:600;text-decoration:none;">✕ Papar semua acara</a>
     </div>
 
     <div id="feedEmpty" class="empty-state hidden">
@@ -484,7 +513,7 @@
     <div id="postDetailNotFound" class="hidden empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Acara tidak dijumpai</div></div>
 
     <div id="postDetailContent" class="card hidden">
-      <img id="pdPoster" class="hidden" style="width:100%;max-height:360px;object-fit:cover;" />
+      <div id="pdPosterGallery" class="hidden" style="display:flex;overflow-x:auto;scrollbar-width:none;"></div>
       <div style="padding:1.5rem;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
           <div style="flex:1;min-width:0;">
@@ -494,14 +523,26 @@
           <button id="btnShare" class="btn btn-outline btn-sm">🔗 Kongsi</button>
         </div>
 
-        <div style="margin-top:1rem;display:flex;flex-direction:column;gap:.4rem;">
+        <div id="pdDateLocWrap" style="margin-top:1rem;display:flex;flex-direction:column;gap:.4rem;">
           <div id="pdDateEl" class="date-chip"><span class="date-chip-icon">📅</span><span id="pdDate"></span></div>
           <div id="pdLocEl" class="date-chip"><span class="date-chip-icon">📍</span><span id="pdLoc"></span></div>
         </div>
 
+        <p id="pdQuestionBody" class="hidden" style="font-size:.9rem;color:var(--ink);margin-top:1rem;"></p>
+        <div id="pdPollBlock" class="hidden" style="margin-top:1rem;"></div>
+
         <div style="display:flex;align-items:center;gap:.75rem;margin-top:1.25rem;flex-wrap:wrap;">
           <a id="pdRegLink" href="#" target="_blank" rel="noopener" class="btn btn-amber hidden">Daftar Sekarang →</a>
           <button id="btnLike" class="like-btn"><span id="likeIcon">🤍</span><span id="likeCount">0</span></button>
+        </div>
+
+        <div id="pdActivitySection" class="hidden">
+          <p class="gallery-section-title">📷 Gambar Aktiviti</p>
+          <div id="pdActivityGallery" class="gallery-grid"></div>
+        </div>
+        <div id="pdWinnerSection" class="hidden">
+          <p class="gallery-section-title">🏆 Hebahan Pemenang</p>
+          <div id="pdWinnerGallery" class="gallery-grid"></div>
         </div>
 
         <!-- Komen -->
@@ -564,7 +605,59 @@
           </div>
           <div class="field">
             <label>Nama Sekolah</label>
-            <input type="text" id="profileSchoolInput" placeholder="cth: SK Subis" class="input" />
+            <input type="text" id="profileSchoolInput" list="schoolList" placeholder="Taip untuk cari sekolah…" class="input" autocomplete="off" />
+            <datalist id="schoolList">
+              <option value="SJKC CHEE MUNG"></option>
+              <option value="SJKC CHIN NAM"></option>
+              <option value="SJKC CHUNG HUA SG LUMUT"></option>
+              <option value="SJKC CHUNG HUA SIBUTI"></option>
+              <option value="SK BATU NIAH"></option>
+              <option value="SK BATU TELLINGAI"></option>
+              <option value="SK BEKENU"></option>
+              <option value="SK BELIAU AHAD"></option>
+              <option value="SK BELIAU ISA"></option>
+              <option value="SK KELAPA SAWIT NO 1"></option>
+              <option value="SK KELAPA SAWIT NO 2"></option>
+              <option value="SK KELAPA SAWIT NO 3"></option>
+              <option value="SK KELAPA SAWIT NO 4"></option>
+              <option value="SK KELAPA SAWIT NO 5"></option>
+              <option value="SK KELURU TENGAH"></option>
+              <option value="SK KITA"></option>
+              <option value="SK KPG ANGUS"></option>
+              <option value="SK KPG BULAU"></option>
+              <option value="SK KPG BUNGAI"></option>
+              <option value="SK KPG IRAN"></option>
+              <option value="SK KPG KUALA SIBUTI"></option>
+              <option value="SK KPG MASJID"></option>
+              <option value="SK KPG SELANYAU"></option>
+              <option value="SK KPG SUBAK"></option>
+              <option value="SK KPG TARIKAN"></option>
+              <option value="SK KPG TEGAGENG"></option>
+              <option value="SK RANCANGAN SEPUPOK"></option>
+              <option value="SK RUMAH BARAT"></option>
+              <option value="SK RUMAH ESSAU"></option>
+              <option value="SK RUMAH GOYANG"></option>
+              <option value="SK RUMAH MENTALI"></option>
+              <option value="SK RUMAH RANGGONG"></option>
+              <option value="SK RUMAH TINGGI"></option>
+              <option value="SK RUMAH UNDI"></option>
+              <option value="SK SG BAKAS"></option>
+              <option value="SK SG LAMAUS"></option>
+              <option value="SK SG MANONG"></option>
+              <option value="SK SG SAEH"></option>
+              <option value="SK SG SEBATU"></option>
+              <option value="SK SG TANGAP"></option>
+              <option value="SK SUAI 1"></option>
+              <option value="SK TANJUNG BELIPAT"></option>
+              <option value="SK TAWAKAL SATAP"></option>
+              <option value="SK ULU SATAP"></option>
+              <option value="SMK BAKONG"></option>
+              <option value="SMK BEKENU"></option>
+              <option value="SMK LUAR BANDAR MIRI"></option>
+              <option value="SMK SUAI"></option>
+              <option value="SMK SUBIS"></option>
+              <option value="PPD SUBIS"></option>
+            </datalist>
           </div>
           <div class="field">
             <label>Bio</label>
@@ -587,7 +680,7 @@
 </main>
 
 <footer style="text-align:center;font-size:.75rem;color:var(--muted);padding:2rem 1rem;border-top:1px solid var(--line);">
-  SubisKini Acara · Dibina dengan Firebase + Vercel · PPD Subis
+  SubisKini · Dibina dengan Firebase + Vercel · PPD Subis
 </footer>
 
 <!-- ═══ MODAL: LOGIN/DAFTAR ═══ -->
@@ -646,7 +739,7 @@
 <div id="postModal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')" style="align-items:flex-start;padding-top:2rem;">
   <div class="post-modal-box">
     <div class="post-modal-hdr">
-      <h3 id="postModalTitle" class="serif" style="font-size:1.1rem;">Cipta Acara</h3>
+      <h3 id="postModalTitle" class="serif" style="font-size:1.1rem;">Create Post</h3>
       <button id="btnClosePostModal" class="modal-close" style="position:static;">✕</button>
     </div>
     <div class="post-modal-body">
@@ -657,12 +750,54 @@
         <input type="hidden" id="postId" />
 
         <div class="field">
-          <label>Tajuk Acara *</label>
+          <label>Jenis Post *</label>
+          <div id="postTypeSelector" style="display:flex;gap:.5rem;">
+            <button type="button" class="btn btn-outline btn-sm post-type-btn" data-type="event" style="flex:1;">📅 Acara</button>
+            <button type="button" class="btn btn-outline btn-sm post-type-btn" data-type="poll" style="flex:1;">📊 Tinjauan</button>
+            <button type="button" class="btn btn-outline btn-sm post-type-btn" data-type="question" style="flex:1;">❓ Soalan</button>
+          </div>
+          <input type="hidden" id="postType" value="event" />
+        </div>
+
+        <div class="field">
+          <label id="postTitleLabel">Tajuk Acara *</label>
           <input type="text" required id="postTitle" placeholder="cth: Pertandingan Robotik Kebangsaan" class="input" />
         </div>
+
+        <div id="pollFields" class="hidden">
+          <div class="field">
+            <label>Pilihan Tinjauan * (min 2, maks 6)</label>
+            <div id="pollOptionsList" style="display:flex;flex-direction:column;gap:.5rem;"></div>
+            <button type="button" id="btnAddPollOption" class="btn btn-outline btn-sm" style="margin-top:.5rem;">+ Tambah Pilihan</button>
+          </div>
+        </div>
+
+        <div id="questionFields" class="hidden">
+          <div class="field">
+            <label>Butiran Tambahan (opsyenal)</label>
+            <textarea id="postQuestionBody" rows="3" placeholder="Huraikan soalan anda dengan lebih lanjut…" class="input"></textarea>
+          </div>
+        </div>
+
+        <div id="eventOnlyFields">
         <div class="field">
           <label>Penganjur *</label>
           <input type="text" required id="postOrganiser" placeholder="cth: Kelab Robotik Sibu" class="input" />
+        </div>
+        <div class="field">
+          <label>Tag / Kategori *</label>
+          <select required id="postCategory" class="input">
+            <option value="" disabled selected>Pilih kategori…</option>
+            <option value="Sukan">Sukan</option>
+            <option value="STEM">STEM</option>
+            <option value="Seni">Seni</option>
+            <option value="PBB">PBB</option>
+            <option value="Penggalakan">Penggalakan</option>
+            <option value="KOA SJKC">KOA SJKC</option>
+            <option value="KOA BM">KOA BM</option>
+            <option value="KOA BI">KOA BI</option>
+            <option value="Lain-lain">Lain-lain</option>
+          </select>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
           <div class="field">
@@ -679,23 +814,48 @@
           <input type="url" id="postRegLink" placeholder="https://…" class="input" />
         </div>
         <div class="field">
-          <label>Poster Acara (opsyenal)</label>
+          <label>Poster Acara (opsyenal, maks 6)</label>
           <div class="poster-upload-area" id="posterUploadArea">
-            <input type="file" accept="image/*" id="postEventPoster" />
+            <input type="file" accept="image/*" multiple id="postEventPoster" />
             <div id="posterUploadHint">
               <div style="font-size:1.5rem;margin-bottom:.4rem;">🖼</div>
               <div style="font-size:.8rem;font-weight:600;color:var(--ink);">Klik atau seret gambar di sini</div>
-              <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">JPG, PNG, WebP — maks 10MB</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">JPG, PNG, WebP — maksimum 6 gambar</div>
             </div>
-            <img id="postEventPosterPreview" class="poster-preview" />
           </div>
+          <div id="postEventPosterPreview" class="multi-preview-grid"></div>
+        </div>
+        <div class="field">
+          <label>Gambar Aktiviti (opsyenal, maks 6)</label>
+          <div class="poster-upload-area" id="activityUploadArea">
+            <input type="file" accept="image/*" multiple id="postActivityPhotos" />
+            <div id="activityUploadHint">
+              <div style="font-size:1.5rem;margin-bottom:.4rem;">📷</div>
+              <div style="font-size:.8rem;font-weight:600;color:var(--ink);">Klik atau seret gambar aktiviti</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">JPG, PNG, WebP — maksimum 6 gambar</div>
+            </div>
+          </div>
+          <div id="postActivityPhotosPreview" class="multi-preview-grid"></div>
+        </div>
+        <div class="field">
+          <label>Hebahan Pemenang (opsyenal, maks 6)</label>
+          <div class="poster-upload-area" id="winnerUploadArea">
+            <input type="file" accept="image/*" multiple id="postWinnerPhotos" />
+            <div id="winnerUploadHint">
+              <div style="font-size:1.5rem;margin-bottom:.4rem;">🏆</div>
+              <div style="font-size:.8rem;font-weight:600;color:var(--ink);">Klik atau seret gambar pemenang</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">JPG, PNG, WebP — maksimum 6 gambar</div>
+            </div>
+          </div>
+          <div id="postWinnerPhotosPreview" class="multi-preview-grid"></div>
         </div>
         <label style="display:flex;align-items:center;gap:.6rem;font-size:.85rem;cursor:pointer;margin-bottom:1rem;color:var(--ink);">
           <input type="checkbox" id="postHighlighted" style="width:16px;height:16px;accent-color:var(--amber);" />
           Sertakan dalam banner "Acara Akan Datang"
         </label>
+        </div>
         <button type="submit" id="btnSubmitPost" class="btn btn-amber" style="width:100%;justify-content:center;padding:.7rem;">
-          Cipta Acara
+          Create Post
         </button>
       </form>
     </div>
@@ -726,6 +886,8 @@ function initApp() {
   const viewPost       = $('viewPost');
   const feedList       = $('feedList');
   const feedEmpty      = $('feedEmpty');
+  const feedFilterBar  = $('feedFilterBar');
+  const feedFilterText = $('feedFilterText');
   const highlightBanner = $('highlightBanner');
   const highlightScroll = $('highlightScroll');
   const btnNewPost     = $('btnNewPost');
@@ -737,11 +899,24 @@ function initApp() {
   const posterInput    = $('postEventPoster');
   const posterPreview  = $('postEventPosterPreview');
   const posterHint     = $('posterUploadHint');
+  const activityInput  = $('postActivityPhotos');
+  const activityPreview = $('postActivityPhotosPreview');
+  const activityHint   = $('activityUploadHint');
+  const winnerInput    = $('postWinnerPhotos');
+  const winnerPreview  = $('postWinnerPhotosPreview');
+  const winnerHint     = $('winnerUploadHint');
+  const postTypeInput  = $('postType');
+  const postTitleLabel = $('postTitleLabel');
+  const eventOnlyFields = $('eventOnlyFields');
+  const pollFields      = $('pollFields');
+  const questionFields  = $('questionFields');
+  const pollOptionsList = $('pollOptionsList');
 
   let currentUser = null;
   let postsState  = {};
   let likesState  = {};
   let commentsState = {};
+  let votesState  = {};
   let unsubPostListeners = [];
 
   // ── AUTH MODAL ──
@@ -843,20 +1018,31 @@ function initApp() {
   });
 
   // ── ROUTER ──
+  let activeFilter = null;
   window.addEventListener('hashchange', route);
   route();
 
   function route() {
     const hash = location.hash.replace(/^#\/?/, '');
     [viewFeed, viewProfile, viewPost].forEach(v => v.classList.add('hidden'));
+    activeFilter = null;
     if (hash.startsWith('profile/')) {
       viewProfile.classList.remove('hidden');
       renderProfile(hash.split('/')[1]);
     } else if (hash.startsWith('post/')) {
       viewPost.classList.remove('hidden');
       renderSinglePost(hash.split('/')[1]);
+    } else if (hash.startsWith('tag/')) {
+      viewFeed.classList.remove('hidden');
+      activeFilter = { type: 'tag', value: decodeURIComponent(hash.slice(4)) };
+      renderFeedAndBanner();
+    } else if (hash.startsWith('org/')) {
+      viewFeed.classList.remove('hidden');
+      activeFilter = { type: 'org', value: decodeURIComponent(hash.slice(4)) };
+      renderFeedAndBanner();
     } else {
       viewFeed.classList.remove('hidden');
+      renderFeedAndBanner();
     }
   }
 
@@ -964,8 +1150,12 @@ function initApp() {
   let openComments = new Set();
   let openMenuKey = null;
   onValue(ref(db, 'posts'),    snap => { postsState    = snap.val() || {}; renderFeedAndBanner(); });
-  onValue(ref(db, 'likes'),    snap => { likesState    = snap.val() || {}; renderFeedAndBanner(); });
-  onValue(ref(db, 'comments'), snap => { commentsState = snap.val() || {}; renderFeedAndBanner(); });
+  onValue(ref(db, 'likes'),    snap => { likesState    = snap.val() || {}; renderFeedAndBanner(); },
+    err => showBanner('Gagal muat data suka: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
+  onValue(ref(db, 'comments'), snap => { commentsState = snap.val() || {}; renderFeedAndBanner(); },
+    err => showBanner('Gagal muat data komen: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
+  onValue(ref(db, 'votes'),    snap => { votesState    = snap.val() || {}; renderFeedAndBanner(); },
+    err => showBanner('Gagal muat data undi: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
   onValue(ref(db, 'users'),    snap => { usersState    = snap.val() || {}; renderFeedAndBanner(); });
 
   document.addEventListener('click', e => {
@@ -977,17 +1167,29 @@ function initApp() {
 
   const likeCount  = key => Object.keys(likesState[key]  || {}).length;
   const comentCount = key => Object.keys(commentsState[key] || {}).length;
+  const coverImg = post => (post.posterImages && post.posterImages[0]) || post.posters?.eventPoster || null;
 
   function renderFeedAndBanner() {
-    const entries = Object.entries(postsState).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+    let entries = Object.entries(postsState).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
     const today = new Date().toISOString().slice(0, 10);
+
+    if (activeFilter) {
+      entries = entries.filter(([, p]) =>
+        activeFilter.type === 'tag' ? p.category === activeFilter.value : p.organiser === activeFilter.value);
+      feedFilterBar.classList.remove('hidden');
+      feedFilterText.textContent = activeFilter.type === 'tag'
+        ? `🏷 Menunjukkan acara bertag "${activeFilter.value}"`
+        : `🏫 Menunjukkan acara oleh "${activeFilter.value}"`;
+    } else {
+      feedFilterBar.classList.add('hidden');
+    }
 
     // Banner
     const hi = entries.filter(([, p]) => p.isHighlighted && p.eventDate >= today);
     highlightBanner.classList.toggle('hidden', hi.length === 0);
     highlightScroll.innerHTML = hi.map(([key, p]) => `
       <a href="#post/${key}" class="highlight-chip">
-        ${p.posters?.eventPoster ? `<img src="${escAttr(p.posters.eventPoster)}" alt="${escAttr(p.title)}" />` : `<div style="height:100px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-size:2rem;">📌</div>`}
+        ${coverImg(p) ? `<img src="${escAttr(coverImg(p))}" alt="${escAttr(p.title)}" />` : `<div style="height:100px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-size:2rem;">📌</div>`}
         <div class="highlight-chip-body">
           <div class="highlight-chip-title">${esc(p.title)}</div>
           <div class="highlight-chip-date">📅 ${esc(p.eventDay || '')}, ${esc(p.eventDate || '')}</div>
@@ -1000,7 +1202,8 @@ function initApp() {
 
     entries.forEach(([key, post]) => {
       const isOwner  = currentUser && currentUser.uid === post.authorId;
-      const poster   = post.posters?.eventPoster;
+      const type     = post.type || 'event';
+      const poster   = type === 'event' ? coverImg(post) : null;
       const author   = usersState[post.authorId] || {};
       const authorName = author.displayName || author.username || post.organiser || 'Pengguna';
       const authorInitial = authorName[0].toUpperCase();
@@ -1009,14 +1212,33 @@ function initApp() {
       const nComments = comentCount(key);
       const isCommentsOpen = openComments.has(key);
 
+      const metaLine = type === 'event'
+        ? `${esc(post.eventDay || '')}, ${esc(post.eventDate || '')} · ${esc(post.location || '')}`
+        : (type === 'poll' ? '📊 Tinjauan' : '❓ Soalan');
+
+      const bodyHtml = type === 'event' ? `
+          ${post.category ? `<a href="#tag/${encodeURIComponent(post.category)}" class="badge badge-amber" style="text-decoration:none;margin-bottom:.4rem;display:inline-block;">${esc(post.category)}</a>` : ''}
+          <a href="#post/${key}" class="fc-title serif" style="display:block;">${esc(post.title)}</a>
+          <a href="#org/${encodeURIComponent(post.organiser)}" class="date-chip" style="text-decoration:none;margin-top:.3rem;">🏫 ${esc(post.organiser)}</a>
+          ${post.registrationLink ? `<a href="${escAttr(post.registrationLink)}" target="_blank" rel="noopener" class="btn btn-amber btn-sm" style="margin-top:.6rem;">Daftar Sekarang →</a>` : ''}
+        ` : type === 'poll' ? `
+          <span class="question-badge">📊 Tinjauan</span>
+          <a href="#post/${key}" class="fc-title serif" style="display:block;margin-bottom:.6rem;">${esc(post.title)}</a>
+          <div class="poll-block" data-key="${key}"></div>
+        ` : `
+          <span class="question-badge">❓ Soalan</span>
+          <a href="#post/${key}" class="fc-title serif" style="display:block;">${esc(post.title)}</a>
+          ${post.questionBody ? `<p style="font-size:.85rem;color:var(--muted);margin-top:.3rem;">${esc(post.questionBody)}</p>` : ''}
+        `;
+
       const card = document.createElement('article');
       card.className = 'fc';
       card.innerHTML = `
         <div class="fc-header">
-          <div class="fc-avatar-sm">${author.photoURL ? `<img src="${escAttr(author.photoURL)}" alt="" />` : esc(authorInitial)}</div>
+          <a href="#profile/${post.authorId}" class="fc-avatar-sm" style="text-decoration:none;">${author.photoURL ? `<img src="${escAttr(author.photoURL)}" alt="" />` : esc(authorInitial)}</a>
           <div class="fc-header-info">
-            <div class="fc-author">${esc(authorName)}</div>
-            <div class="fc-meta">${esc(post.eventDay || '')}, ${esc(post.eventDate || '')} · ${esc(post.location || '')}</div>
+            <a href="#profile/${post.authorId}" style="text-decoration:none;"><span class="fc-author">${esc(authorName)}</span></a>
+            <div class="fc-meta">${metaLine}</div>
           </div>
           <button class="fc-menu-btn" data-action="menu" data-key="${key}">⋮</button>
           <div class="fc-menu hidden" data-key="${key}">
@@ -1030,24 +1252,22 @@ function initApp() {
 
         ${poster
           ? `<a href="#post/${key}" class="fc-poster-link"><img src="${escAttr(poster)}" class="fc-poster" alt="${escAttr(post.title)}" loading="lazy" /></a>`
-          : `<div class="fc-poster-placeholder">📌</div>`}
+          : (type === 'event' ? `<div class="fc-poster-placeholder">📌</div>` : '')}
 
-        <div class="fc-body">
-          <a href="#post/${key}" class="fc-title serif" style="display:block;">${esc(post.title)}</a>
-          ${post.registrationLink ? `<a href="${escAttr(post.registrationLink)}" target="_blank" rel="noopener" class="btn btn-amber btn-sm" style="margin-top:.6rem;">Daftar Sekarang →</a>` : ''}
-        </div>
+        <div class="fc-body">${bodyHtml}</div>
 
         <div class="fc-actions">
           <button class="fc-action-btn${liked ? ' liked' : ''}" data-action="like" data-key="${key}">
-            <span>${liked ? '❤️' : '🤍'}</span><span>${nLikes > 0 ? nLikes : ''} Suka</span>
+            <span>${liked ? '❤️' : '🤍'}</span><span>${nLikes} Suka</span>
           </button>
           <button class="fc-action-btn" data-action="toggle-comments" data-key="${key}">
-            <span>💬</span><span>${nComments > 0 ? nComments : ''} Komen</span>
+            <span>💬</span><span>${nComments} Komen</span>
           </button>
           <button class="fc-action-btn" data-action="share" data-key="${key}">
             <span>🔗</span><span>Kongsi</span>
           </button>
         </div>
+        <p style="font-size:.7rem;color:var(--muted);padding:0 1rem .6rem;margin:0;">👆 Tekan kad untuk maklumat lanjut · tekan nama untuk lihat profil</p>
 
         <div class="fc-comments${isCommentsOpen ? '' : ' hidden'}" data-key="${key}">
           <div class="fc-comment-list" data-key="${key}"></div>
@@ -1062,6 +1282,7 @@ function initApp() {
         </div>`;
       feedList.appendChild(card);
 
+      if (type === 'poll') renderPollBlock(post, key, card.querySelector('.poll-block'));
       if (isCommentsOpen) renderInlineComments(key, card.querySelector('.fc-comment-list'));
 
       if (openMenuKey === key) card.querySelector('.fc-menu').classList.remove('hidden');
@@ -1100,26 +1321,76 @@ function initApp() {
         const text = input.value.trim();
         if (!text || !currentUser) return;
         input.disabled = true;
-        const newRef = push(ref(db, `comments/${key}`));
-        await set(newRef, { userId: currentUser.uid, text, createdAt: Date.now() });
-        input.value = ''; input.disabled = false;
+        try {
+          const newRef = push(ref(db, `comments/${key}`));
+          await set(newRef, { userId: currentUser.uid, text, createdAt: Date.now() });
+          input.value = '';
+        } catch (err) {
+          showBanner('Gagal hantar komen: ' + (err.message || err.code || 'ralat tidak diketahui'), true);
+        } finally {
+          input.disabled = false;
+        }
       }));
   }
 
   async function toggleLike(postKey) {
     if (!currentUser) { showBanner('Sila log masuk untuk menyukai acara ini.', true); return; }
-    const lr = ref(db, `likes/${postKey}/${currentUser.uid}`);
-    const s  = await get(lr);
-    s.exists() ? await remove(lr) : await set(lr, true);
+    try {
+      const lr = ref(db, `likes/${postKey}/${currentUser.uid}`);
+      const s  = await get(lr);
+      s.exists() ? await remove(lr) : await set(lr, true);
+    } catch (err) {
+      showBanner('Gagal menyukai: ' + (err.message || err.code || 'ralat tidak diketahui'), true);
+    }
+  }
+
+  async function toggleVote(postKey, optionId) {
+    if (!currentUser) { showBanner('Sila log masuk untuk mengundi.', true); return; }
+    try {
+      const vr = ref(db, `votes/${postKey}/${currentUser.uid}`);
+      const s  = await get(vr);
+      (s.exists() && s.val() === optionId) ? await remove(vr) : await set(vr, optionId);
+    } catch (err) {
+      showBanner('Gagal mengundi: ' + (err.message || err.code || 'ralat tidak diketahui'), true);
+    }
+  }
+
+  function renderPollBlock(post, key, container) {
+    const votes = votesState[key] || {};
+    const counts = {};
+    let total = 0;
+    Object.values(votes).forEach(optId => { counts[optId] = (counts[optId] || 0) + 1; total++; });
+    const myVote = currentUser ? votes[currentUser.uid] : null;
+    container.innerHTML = (post.pollOptions || []).map(opt => {
+      const n = counts[opt.id] || 0;
+      const pct = total ? Math.round((n / total) * 100) : 0;
+      const voted = myVote === opt.id;
+      return `
+        <div class="poll-bar-wrap${voted ? ' voted' : ''}" data-poll-key="${key}" data-opt-id="${escAttr(opt.id)}">
+          <div class="poll-bar-fill" style="width:${pct}%;"></div>
+          <div class="poll-bar-content"><span>${voted ? '✓ ' : ''}${esc(opt.text)}</span><span>${pct}% (${n})</span></div>
+        </div>`;
+    }).join('') + `<p class="poll-meta">${total} undi jumlah${myVote ? ' · Anda telah mengundi, tekan semula untuk buang undi' : ''}</p>`;
+    container.querySelectorAll('.poll-bar-wrap').forEach(el =>
+      el.addEventListener('click', () => toggleVote(el.dataset.pollKey, el.dataset.optId)));
   }
 
   async function sharePost(postKey) {
     const url = `${location.origin}${location.pathname}#post/${postKey}`;
     if (navigator.share) {
-      try { await navigator.share({ title: 'SubisKini Acara', url }); } catch {}
+      try { await navigator.share({ title: 'SubisKini', url }); } catch {}
     } else {
       await navigator.clipboard.writeText(url);
       showBanner('Pautan disalin! 📋');
+    }
+  }
+
+  async function deleteComment(postKey, commentKey) {
+    if (!confirm('Padam komen ini?')) return;
+    try {
+      await remove(ref(db, `comments/${postKey}/${commentKey}`));
+    } catch (err) {
+      showBanner('Gagal padam komen: ' + (err.message || err.code || 'ralat tidak diketahui'), true);
     }
   }
 
@@ -1130,34 +1401,44 @@ function initApp() {
       listEl.innerHTML = '<p style="font-size:.78rem;color:var(--muted);padding:.35rem 0;">Belum ada komen. Jadi yang pertama!</p>';
       return;
     }
-    const html = await Promise.all(entries.map(async ([, c]) => {
+    const postAuthorId = (postsState[postKey] || {}).authorId;
+    const html = await Promise.all(entries.map(async ([ck, c]) => {
       const u = usersState[c.userId] || {};
       const name = u.displayName || u.username || 'Pengguna';
       const initial = name[0].toUpperCase();
       const ts = c.createdAt ? new Date(c.createdAt).toLocaleString('ms-MY', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      const canDelete = currentUser && (currentUser.uid === c.userId || currentUser.uid === postAuthorId);
       return `
         <div class="fc-comment-item">
           <div class="fc-avatar-sm">${u.photoURL ? `<img src="${escAttr(u.photoURL)}" alt="" />` : esc(initial)}</div>
-          <div class="fc-comment-bubble">
+          <div class="fc-comment-bubble" style="position:relative;">
             <div class="fc-comment-name">${esc(name)} ${ts ? `<span style="font-weight:400;color:var(--muted);font-size:.7rem;">· ${esc(ts)}</span>` : ''}</div>
             <div class="fc-comment-text">${esc(c.text)}</div>
+            ${canDelete ? `<button data-action="delete-comment" data-post-key="${postKey}" data-comment-key="${ck}" title="Padam komen" style="position:absolute;top:.3rem;right:.3rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;">🗑</button>` : ''}
           </div>
         </div>`;
     }));
     listEl.innerHTML = html.join('');
+    listEl.querySelectorAll('[data-action="delete-comment"]').forEach(btn =>
+      btn.addEventListener('click', () => deleteComment(btn.dataset.postKey, btn.dataset.commentKey)));
   }
 
   // ── POST MODAL ──
   btnNewPost.addEventListener('click', () => openPostModal());
   $('btnClosePostModal').addEventListener('click', () => postModal.classList.add('hidden'));
 
-  posterInput.addEventListener('change', () => {
-    const f = posterInput.files[0];
-    if (!f) { posterPreview.style.display = 'none'; posterHint.style.display = ''; return; }
-    posterPreview.src = URL.createObjectURL(f);
-    posterPreview.style.display = 'block';
-    posterHint.style.display = 'none';
-  });
+  function bindMultiPreview(input, preview, hint) {
+    input.addEventListener('change', () => {
+      if (input.files.length > 6) showBanner('Maksimum 6 gambar sahaja akan digunakan.', true);
+      const files = Array.from(input.files).slice(0, 6);
+      preview.innerHTML = files.map(f => `<img src="${URL.createObjectURL(f)}" />`).join('');
+      preview.style.display = files.length ? 'grid' : 'none';
+      hint.style.display = files.length ? 'none' : '';
+    });
+  }
+  bindMultiPreview(posterInput, posterPreview, posterHint);
+  bindMultiPreview(activityInput, activityPreview, activityHint);
+  bindMultiPreview(winnerInput, winnerPreview, winnerHint);
 
   function clearPostErr() { postError.classList.add('hidden'); postError.textContent = ''; }
   function showPostErr(msg) { postError.innerHTML = '⚠ ' + esc(msg); postError.classList.remove('hidden'); }
@@ -1166,31 +1447,106 @@ function initApp() {
     postProgress.textContent = msg; postProgress.classList.remove('hidden');
   }
 
+  function showExistingGallery(preview, hint, urls) {
+    if (!urls || !urls.length) return;
+    preview.innerHTML = urls.map(u => `<img src="${escAttr(u)}" />`).join('');
+    preview.style.display = 'grid';
+    hint.style.display = 'none';
+  }
+
+  // ── POST TYPE SELECTOR ──
+  const eventRequiredIds = ['postOrganiser', 'postCategory', 'postEventDate', 'postLocation'];
+  let pollOptCounter = 0;
+
+  function makePollOptionRow(value = '') {
+    const id = 'opt' + (pollOptCounter++);
+    const row = document.createElement('div');
+    row.className = 'poll-option-row';
+    row.dataset.optId = id;
+    row.innerHTML = `
+      <input type="text" class="input poll-opt-input" placeholder="Pilihan…" maxlength="80" value="${escAttr(value)}" />
+      <button type="button" class="poll-remove-opt" title="Buang pilihan">✕</button>`;
+    row.querySelector('.poll-remove-opt').addEventListener('click', () => {
+      if (pollOptionsList.children.length <= 2) { showPostErr('Tinjauan perlu sekurang-kurangnya 2 pilihan.'); return; }
+      row.remove();
+    });
+    return row;
+  }
+
+  function resetPollOptions(values = ['', '']) {
+    pollOptionsList.innerHTML = '';
+    values.forEach(v => pollOptionsList.appendChild(makePollOptionRow(v)));
+  }
+
+  $('btnAddPollOption').addEventListener('click', () => {
+    if (pollOptionsList.children.length >= 6) { showPostErr('Maksimum 6 pilihan sahaja.'); return; }
+    pollOptionsList.appendChild(makePollOptionRow());
+  });
+
+  function getPollOptionsFromForm() {
+    return Array.from(pollOptionsList.children)
+      .map(row => ({ id: row.dataset.optId, text: row.querySelector('.poll-opt-input').value.trim() }))
+      .filter(o => o.text);
+  }
+
+  const titleLabels = {
+    event: 'Tajuk Acara *',
+    poll: 'Soalan Tinjauan *',
+    question: 'Soalan *'
+  };
+  const titlePlaceholders = {
+    event: 'cth: Pertandingan Robotik Kebangsaan',
+    poll: 'cth: Sukan manakah paling anda gemari?',
+    question: 'cth: Bilakah tarikh tutup pendaftaran KOA?'
+  };
+
+  function setPostType(type) {
+    postTypeInput.value = type;
+    document.querySelectorAll('.post-type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+    postTitleLabel.textContent = titleLabels[type];
+    $('postTitle').placeholder = titlePlaceholders[type];
+    eventOnlyFields.classList.toggle('hidden', type !== 'event');
+    pollFields.classList.toggle('hidden', type !== 'poll');
+    questionFields.classList.toggle('hidden', type !== 'question');
+    eventRequiredIds.forEach(id => { $(id).required = (type === 'event'); });
+    if (type === 'poll' && !pollOptionsList.children.length) resetPollOptions();
+  }
+
+  document.querySelectorAll('.post-type-btn').forEach(btn =>
+    btn.addEventListener('click', () => setPostType(btn.dataset.type)));
+
   function openPostModal(existing = null, postKey = null) {
     clearPostErr(); showPostProg('');
     postForm.reset();
-    posterPreview.style.display = 'none'; posterHint.style.display = '';
+    [posterPreview, activityPreview, winnerPreview].forEach(p => { p.innerHTML = ''; p.style.display = 'none'; });
+    [posterHint, activityHint, winnerHint].forEach(h => h.style.display = '');
     $('postId').value = postKey || '';
 
+    const type = (existing && existing.type) || 'event';
+    setPostType(type);
+
     if (existing) {
-      $('postModalTitle').textContent = 'Sunting Acara';
+      $('postModalTitle').textContent = 'Edit Post';
       btnSubmitPost.textContent = 'Simpan Perubahan';
       $('postTitle').value = existing.title || '';
       $('postOrganiser').value = existing.organiser || '';
+      $('postCategory').value = existing.category || '';
       $('postEventDate').value = existing.eventDate || '';
       $('postLocation').value = existing.location || '';
       $('postRegLink').value = existing.registrationLink || '';
       $('postHighlighted').checked = !!existing.isHighlighted;
-      if (existing.posters?.eventPoster) {
-        posterPreview.src = existing.posters.eventPoster;
-        posterPreview.style.display = 'block';
-        posterHint.style.display = 'none';
-      }
+      $('postQuestionBody').value = existing.questionBody || '';
+      if (type === 'poll' && existing.pollOptions) resetPollOptions(existing.pollOptions.map(o => o.text));
+      const existingPosters = existing.posterImages || (existing.posters?.eventPoster ? [existing.posters.eventPoster] : []);
+      showExistingGallery(posterPreview, posterHint, existingPosters);
+      showExistingGallery(activityPreview, activityHint, existing.activityImages);
+      showExistingGallery(winnerPreview, winnerHint, existing.winnerImages);
     } else {
-      $('postModalTitle').textContent = 'Cipta Acara';
-      btnSubmitPost.textContent = 'Cipta Acara';
+      $('postModalTitle').textContent = 'Create Post';
+      btnSubmitPost.textContent = 'Create Post';
+      resetPollOptions();
+      $('postQuestionBody').value = '';
     }
-    posterInput.removeAttribute('required');
     postModal.classList.remove('hidden');
   }
 
@@ -1203,47 +1559,74 @@ function initApp() {
     btnSubmitPost.disabled = true;
 
     try {
-      let posterUrl = null;
-      const file = posterInput.files[0];
-      if (file) {
-        showPostProg('Memampatkan imej…');
-        const compressed = await imageCompression(file, { maxSizeMB: .3, maxWidthOrHeight: 1600, useWebWorker: true, fileType: 'image/webp' });
-        showPostProg('Memuat naik poster…');
-        const fd = new FormData();
-        fd.append('file', compressed);
-        fd.append('upload_preset', CLOUDINARY.uploadPreset);
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/image/upload`, { method: 'POST', body: fd });
-        if (!res.ok) throw new Error('Upload poster gagal. Semak Cloudinary upload preset.');
-        posterUrl = (await res.json()).secure_url;
+      async function uploadGallery(input, label) {
+        const files = Array.from(input.files).slice(0, 6);
+        if (!files.length) return null; // no new selection — keep existing on edit
+        const urls = [];
+        for (let i = 0; i < files.length; i++) {
+          showPostProg(`Memampatkan & memuat naik ${label} (${i + 1}/${files.length})…`);
+          const compressed = await imageCompression(files[i], { maxSizeMB: .3, maxWidthOrHeight: 1600, useWebWorker: true, fileType: 'image/webp' });
+          const fd = new FormData();
+          fd.append('file', compressed);
+          fd.append('upload_preset', CLOUDINARY.uploadPreset);
+          const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY.cloudName}/image/upload`, { method: 'POST', body: fd });
+          if (!res.ok) throw new Error(`Muat naik ${label} gagal. Semak Cloudinary upload preset.`);
+          urls.push((await res.json()).secure_url);
+        }
+        return urls;
       }
 
-      const eventDate = $('postEventDate').value;
-      const hari = ['Ahad','Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu'];
-      const postData = {
-        authorId: currentUser.uid,
-        title: $('postTitle').value.trim(),
-        organiser: $('postOrganiser').value.trim(),
-        eventDate, eventDay: hari[new Date(eventDate + 'T00:00:00').getDay()],
-        location: $('postLocation').value.trim(),
-        registrationLink: $('postRegLink').value.trim(),
-        isHighlighted: $('postHighlighted').checked
-      };
+      const type = postTypeInput.value;
+      let postData = { authorId: currentUser.uid, type, title: $('postTitle').value.trim() };
+      let posterUrls = null, activityUrls = null, winnerUrls = null;
 
-      showPostProg('Menyimpan acara…');
+      if (type === 'poll') {
+        const opts = getPollOptionsFromForm();
+        if (opts.length < 2) throw new Error('Tinjauan perlu sekurang-kurangnya 2 pilihan.');
+        postData.pollOptions = opts;
+      } else if (type === 'question') {
+        postData.questionBody = $('postQuestionBody').value.trim();
+      } else {
+        posterUrls   = await uploadGallery(posterInput, 'poster');
+        activityUrls = await uploadGallery(activityInput, 'gambar aktiviti');
+        winnerUrls   = await uploadGallery(winnerInput, 'hebahan pemenang');
+
+        const eventDate = $('postEventDate').value;
+        const hari = ['Ahad','Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu'];
+        Object.assign(postData, {
+          organiser: $('postOrganiser').value.trim(),
+          category: $('postCategory').value,
+          eventDate, eventDay: hari[new Date(eventDate + 'T00:00:00').getDay()],
+          location: $('postLocation').value.trim(),
+          registrationLink: $('postRegLink').value.trim(),
+          isHighlighted: $('postHighlighted').checked
+        });
+      }
+
+      showPostProg('Menyimpan post…');
       if (isEdit) {
         const updates = { ...postData };
-        if (posterUrl) updates['posters/eventPoster'] = posterUrl;
+        if (posterUrls)   updates.posterImages   = posterUrls;
+        if (activityUrls) updates.activityImages = activityUrls;
+        if (winnerUrls)   updates.winnerImages   = winnerUrls;
         await update(ref(db, 'posts/' + postKey), updates);
       } else {
         const newRef = push(ref(db, 'posts'));
-        await set(newRef, { ...postData, posters: { eventPoster: posterUrl || '', resultPoster: '' }, createdAt: Date.now() });
+        await set(newRef, {
+          ...postData,
+          posterImages: posterUrls || [],
+          activityImages: activityUrls || [],
+          winnerImages: winnerUrls || [],
+          posters: { eventPoster: (posterUrls && posterUrls[0]) || '', resultPoster: '' },
+          createdAt: Date.now()
+        });
       }
 
       showPostProg('');
       postModal.classList.add('hidden');
-      showBanner(isEdit ? 'Acara dikemaskini.' : 'Acara berjaya dicipta! 🎉');
+      showBanner(isEdit ? 'Post dikemaskini.' : 'Post berjaya dicipta! 🎉');
     } catch (err) {
-      showPostProg(''); showPostErr(err.message || 'Ralat menyimpan acara.');
+      showPostProg(''); showPostErr(err.message || 'Ralat menyimpan post.');
     } finally {
       btnSubmitPost.disabled = false;
     }
@@ -1263,6 +1646,8 @@ function initApp() {
   function renderSinglePost(postKey) {
     unsubPostListeners.forEach(fn => fn && fn());
     unsubPostListeners = [];
+    let currentPostAuthorId = null;
+    let latestPost = null;
 
     const loading = $('postDetailLoading'), notFound = $('postDetailNotFound'), content = $('postDetailContent');
     [notFound, content].forEach(e => e.classList.add('hidden'));
@@ -1273,21 +1658,39 @@ function initApp() {
       if (!snap.exists()) { notFound.classList.remove('hidden'); return; }
       content.classList.remove('hidden');
       const p = snap.val();
+      currentPostAuthorId = p.authorId || null;
+      latestPost = p;
+      const type = p.type || 'event';
 
       const pdPoster = $('pdPoster');
       if (p.posters?.eventPoster) { pdPoster.src = p.posters.eventPoster; pdPoster.classList.remove('hidden'); }
       else pdPoster.classList.add('hidden');
 
       $('pdTitle').textContent = p.title || '';
-      $('pdOrganiser').textContent = p.organiser || '';
+      $('pdOrganiser').textContent = type === 'event' ? (p.organiser || '') : (type === 'poll' ? '📊 Tinjauan' : '❓ Soalan');
+      $('pdDateLocWrap').classList.toggle('hidden', type !== 'event');
       $('pdDate').textContent = (p.eventDay ? p.eventDay + ', ' : '') + (p.eventDate || '');
       $('pdLoc').textContent = p.location || '';
 
       const regLink = $('pdRegLink');
-      regLink.classList.toggle('hidden', !p.registrationLink);
+      regLink.classList.toggle('hidden', type !== 'event' || !p.registrationLink);
       if (p.registrationLink) regLink.href = p.registrationLink;
+
+      const qBody = $('pdQuestionBody');
+      qBody.classList.toggle('hidden', !(type === 'question' && p.questionBody));
+      qBody.textContent = p.questionBody || '';
+
+      const pollBlock = $('pdPollBlock');
+      pollBlock.classList.toggle('hidden', type !== 'poll');
+      if (type === 'poll') renderPollBlock(p, postKey, pollBlock);
     });
     unsubPostListeners.push(unsub1);
+
+    const unsubVotes = onValue(ref(db, `votes/${postKey}`), snap => {
+      votesState[postKey] = snap.val() || {};
+      if (latestPost && (latestPost.type === 'poll')) renderPollBlock(latestPost, postKey, $('pdPollBlock'));
+    }, err => showBanner('Gagal muat undi: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
+    unsubPostListeners.push(unsubVotes);
 
     // Like
     const btnLike = $('btnLike'), likeIcon = $('likeIcon'), likeCountEl = $('likeCount');
@@ -1298,26 +1701,13 @@ function initApp() {
       const liked = !!(currentUser && likes[currentUser.uid]);
       likeIcon.textContent = liked ? '❤️' : '🤍';
       btnLike.classList.toggle('liked', liked);
-    });
+    }, err => showBanner('Gagal muat suka: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
     unsubPostListeners.push(unsub2);
 
-    btnLike.onclick = async () => {
-      if (!currentUser) { showBanner('Sila log masuk untuk menyukai acara ini.', true); return; }
-      const lr = ref(db, `likes/${postKey}/${currentUser.uid}`);
-      const s  = await get(lr);
-      s.exists() ? await remove(lr) : await set(lr, true);
-    };
+    btnLike.onclick = () => toggleLike(postKey);
 
     // Share
-    $('btnShare').onclick = async () => {
-      const url = `${location.origin}${location.pathname}#post/${postKey}`;
-      if (navigator.share) {
-        try { await navigator.share({ title: 'SubisKini Acara', url }); } catch {}
-      } else {
-        await navigator.clipboard.writeText(url);
-        showBanner('Pautan disalin! 📋');
-      }
-    };
+    $('btnShare').onclick = () => sharePost(postKey);
 
     // Comments
     const cForm = $('commentForm'), cPrompt = $('commentLoginPrompt'), cInput = $('commentInput'), cList = $('commentList');
@@ -1327,10 +1717,17 @@ function initApp() {
     cForm.onsubmit = async e => {
       e.preventDefault();
       const text = cInput.value.trim();
-      if (!text) return;
-      const newRef = push(ref(db, `comments/${postKey}`));
-      await set(newRef, { userId: currentUser.uid, text, createdAt: Date.now() });
-      cInput.value = '';
+      if (!text || !currentUser) return;
+      cInput.disabled = true;
+      try {
+        const newRef = push(ref(db, `comments/${postKey}`));
+        await set(newRef, { userId: currentUser.uid, text, createdAt: Date.now() });
+        cInput.value = '';
+      } catch (err) {
+        showBanner('Gagal hantar komen: ' + (err.message || err.code || 'ralat tidak diketahui'), true);
+      } finally {
+        cInput.disabled = false;
+      }
     };
 
     const unsub3 = onValue(ref(db, `comments/${postKey}`), async snap => {
@@ -1343,14 +1740,15 @@ function initApp() {
         return;
       }
 
-      const html = await Promise.all(entries.map(async ([, c]) => {
+      const html = await Promise.all(entries.map(async ([ck, c]) => {
         const uSnap = await get(ref(db, 'users/' + c.userId));
         const d = uSnap.exists() ? uSnap.val() : {};
         const name = d.displayName || d.username || 'Pengguna';
         const initial = name[0].toUpperCase();
         const ts = c.createdAt ? new Date(c.createdAt).toLocaleString('ms-MY', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        const canDelete = currentUser && (currentUser.uid === c.userId || currentUser.uid === currentPostAuthorId);
         return `
-          <div class="comment-item">
+          <div class="comment-item" style="position:relative;">
             <div class="comment-avatar">${esc(initial)}</div>
             <div style="flex:1;min-width:0;">
               <div style="display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;">
@@ -1359,10 +1757,13 @@ function initApp() {
               </div>
               <p style="font-size:.85rem;margin-top:.2rem;color:var(--ink);">${esc(c.text)}</p>
             </div>
+            ${canDelete ? `<button data-action="delete-comment" data-post-key="${postKey}" data-comment-key="${ck}" title="Padam komen" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;align-self:flex-start;">🗑</button>` : ''}
           </div>`;
       }));
       cList.innerHTML = html.join('');
-    });
+      cList.querySelectorAll('[data-action="delete-comment"]').forEach(btn =>
+        btn.addEventListener('click', () => deleteComment(btn.dataset.postKey, btn.dataset.commentKey)));
+    }, err => showBanner('Gagal muat komen: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
     unsubPostListeners.push(unsub3);
   }
 
