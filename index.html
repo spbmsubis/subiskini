@@ -375,6 +375,66 @@
   /* date chip */
   .date-chip { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; color: var(--muted); }
   .date-chip-icon { font-size: .85rem; }
+
+  /* ── SOCIAL FEED CARD ── */
+  .fc { background: var(--white); border: 1px solid var(--line); border-radius: 12px; overflow: visible; margin-bottom: 1rem; }
+  .fc-header { display: flex; align-items: center; gap: .65rem; padding: .85rem 1rem; position: relative; }
+  .fc-header-info { flex: 1; min-width: 0; }
+  .fc-author { font-size: .85rem; font-weight: 700; color: var(--ink); line-height: 1.2; }
+  .fc-meta { font-size: .72rem; color: var(--muted); margin-top: .1rem; }
+  .fc-menu-btn {
+    background: transparent; border: none; cursor: pointer;
+    font-size: 1.1rem; color: var(--muted); padding: .3rem .5rem; border-radius: 6px;
+    line-height: 1; font-family: inherit;
+  }
+  .fc-menu-btn:hover { background: var(--paper); color: var(--ink); }
+  .fc-menu {
+    position: absolute; top: 2.6rem; right: 1rem; z-index: 20;
+    background: var(--white); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(14,28,42,.15); min-width: 160px; overflow: hidden;
+  }
+  .fc-menu button {
+    display: flex; align-items: center; gap: .5rem; width: 100%;
+    background: transparent; border: none; cursor: pointer; text-align: left;
+    padding: .6rem .9rem; font-size: .82rem; font-family: inherit; color: var(--ink);
+  }
+  .fc-menu button:hover { background: var(--paper); }
+  .fc-menu button.danger { color: var(--red); }
+  .fc-poster-link { display: block; }
+  .fc-poster { width: 100%; max-height: 420px; object-fit: cover; display: block; background: var(--line); }
+  .fc-poster-placeholder {
+    width: 100%; height: 90px;
+    background: linear-gradient(135deg, var(--ink) 0%, #1C3450 100%);
+    display: flex; align-items: center; justify-content: center; font-size: 1.75rem; opacity: .6;
+  }
+  .fc-body { padding: .85rem 1rem .5rem; }
+  .fc-title { font-size: 1rem; line-height: 1.3; color: var(--ink); text-decoration: none; }
+  .fc-title:hover { color: var(--amber); }
+  .fc-details { display: flex; flex-direction: column; gap: .2rem; margin-top: .4rem; }
+  .fc-actions {
+    display: flex; align-items: center; gap: .25rem;
+    padding: .35rem .5rem; border-top: 1px solid var(--line); margin-top: .5rem;
+  }
+  .fc-action-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: .4rem;
+    background: transparent; border: none; cursor: pointer; font-family: inherit;
+    font-size: .8rem; font-weight: 600; color: var(--muted); padding: .55rem; border-radius: 8px;
+    transition: background .12s;
+  }
+  .fc-action-btn:hover { background: var(--paper); }
+  .fc-action-btn.liked { color: var(--red); }
+  .fc-comments { border-top: 1px solid var(--line); padding: .75rem 1rem 1rem; }
+  .fc-comment-item { display: flex; gap: .55rem; padding: .45rem 0; align-items: flex-start; }
+  .fc-comment-bubble { background: var(--paper); border-radius: 12px; padding: .45rem .7rem; flex: 1; min-width: 0; }
+  .fc-comment-name { font-size: .75rem; font-weight: 700; color: var(--ink); }
+  .fc-comment-text { font-size: .82rem; color: var(--ink); margin-top: .1rem; word-wrap: break-word; }
+  .fc-comment-form { display: flex; gap: .5rem; margin-top: .5rem; }
+  .fc-avatar-sm {
+    width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+    background: var(--ink); color: var(--paper);
+    display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700;
+  }
+  .fc-avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
 </style>
 </head>
 <body>
@@ -900,9 +960,20 @@ function initApp() {
   }
 
   // ── FEED (real-time) ──
+  let usersState = {};
+  let openComments = new Set();
+  let openMenuKey = null;
   onValue(ref(db, 'posts'),    snap => { postsState    = snap.val() || {}; renderFeedAndBanner(); });
   onValue(ref(db, 'likes'),    snap => { likesState    = snap.val() || {}; renderFeedAndBanner(); });
   onValue(ref(db, 'comments'), snap => { commentsState = snap.val() || {}; renderFeedAndBanner(); });
+  onValue(ref(db, 'users'),    snap => { usersState    = snap.val() || {}; renderFeedAndBanner(); });
+
+  document.addEventListener('click', e => {
+    if (openMenuKey && !e.target.closest('.fc-menu') && !e.target.closest('.fc-menu-btn')) {
+      openMenuKey = null;
+      document.querySelectorAll('.fc-menu').forEach(m => m.classList.add('hidden'));
+    }
+  });
 
   const likeCount  = key => Object.keys(likesState[key]  || {}).length;
   const comentCount = key => Object.keys(commentsState[key] || {}).length;
@@ -928,49 +999,152 @@ function initApp() {
     feedList.innerHTML = '';
 
     entries.forEach(([key, post]) => {
-      const isOwner = currentUser && currentUser.uid === post.authorId;
-      const poster  = post.posters?.eventPoster;
-      const card    = document.createElement('article');
-      card.className = 'feed-card';
+      const isOwner  = currentUser && currentUser.uid === post.authorId;
+      const poster   = post.posters?.eventPoster;
+      const author   = usersState[post.authorId] || {};
+      const authorName = author.displayName || author.username || post.organiser || 'Pengguna';
+      const authorInitial = authorName[0].toUpperCase();
+      const liked    = !!(currentUser && (likesState[key] || {})[currentUser.uid]);
+      const nLikes   = likeCount(key);
+      const nComments = comentCount(key);
+      const isCommentsOpen = openComments.has(key);
+
+      const card = document.createElement('article');
+      card.className = 'fc';
       card.innerHTML = `
+        <div class="fc-header">
+          <div class="fc-avatar-sm">${author.photoURL ? `<img src="${escAttr(author.photoURL)}" alt="" />` : esc(authorInitial)}</div>
+          <div class="fc-header-info">
+            <div class="fc-author">${esc(authorName)}</div>
+            <div class="fc-meta">${esc(post.eventDay || '')}, ${esc(post.eventDate || '')} · ${esc(post.location || '')}</div>
+          </div>
+          <button class="fc-menu-btn" data-action="menu" data-key="${key}">⋮</button>
+          <div class="fc-menu hidden" data-key="${key}">
+            <button data-action="share" data-key="${key}">🔗 Kongsi</button>
+            ${isOwner ? `
+              <button data-action="edit" data-key="${key}">✏ Sunting</button>
+              <button data-action="delete" data-key="${key}" class="danger">🗑 Padam</button>
+            ` : ''}
+          </div>
+        </div>
+
         ${poster
-          ? `<img src="${escAttr(poster)}" class="feed-card-img" alt="${escAttr(post.title)}" loading="lazy" />`
-          : `<div class="feed-card-img-placeholder">📌</div>`}
-        <div style="padding:1rem 1.25rem;flex:1;min-width:0;display:flex;flex-direction:column;gap:.5rem;">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
-            <div style="min-width:0;">
-              <a href="#post/${key}" style="text-decoration:none;">
-                <h3 class="serif" style="font-size:1.05rem;line-height:1.25;color:var(--ink);hover:color:var(--amber);">${esc(post.title)}</h3>
-              </a>
-              <p style="font-size:.78rem;color:var(--muted);margin-top:.2rem;">${esc(post.organiser)}</p>
-            </div>
-            ${post.isHighlighted ? `<span class="badge badge-amber" style="flex-shrink:0;">AKAN DATANG</span>` : ''}
-          </div>
-          <div style="display:flex;flex-direction:column;gap:.25rem;">
-            <div class="date-chip"><span>📅</span> ${esc(post.eventDay || '')}, ${esc(post.eventDate || '')}</div>
-            <div class="date-chip"><span>📍</span> ${esc(post.location || '')}</div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:.5rem;flex-wrap:wrap;gap:.4rem;">
-            <div style="display:flex;gap:.75rem;font-size:.78rem;color:var(--muted);">
-              <span style="display:flex;align-items:center;gap:.25rem;">🤍 ${likeCount(key)}</span>
-              <span style="display:flex;align-items:center;gap:.25rem;">💬 ${comentCount(key)}</span>
-            </div>
-            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-              ${post.registrationLink ? `<a href="${escAttr(post.registrationLink)}" target="_blank" rel="noopener" class="btn btn-amber btn-sm">Daftar →</a>` : ''}
-              ${isOwner ? `
-                <button data-action="edit" data-key="${key}" class="btn btn-outline btn-sm">Sunting</button>
-                <button data-action="delete" data-key="${key}" class="btn btn-danger btn-sm">Padam</button>
-              ` : ''}
-            </div>
-          </div>
+          ? `<a href="#post/${key}" class="fc-poster-link"><img src="${escAttr(poster)}" class="fc-poster" alt="${escAttr(post.title)}" loading="lazy" /></a>`
+          : `<div class="fc-poster-placeholder">📌</div>`}
+
+        <div class="fc-body">
+          <a href="#post/${key}" class="fc-title serif" style="display:block;">${esc(post.title)}</a>
+          ${post.registrationLink ? `<a href="${escAttr(post.registrationLink)}" target="_blank" rel="noopener" class="btn btn-amber btn-sm" style="margin-top:.6rem;">Daftar Sekarang →</a>` : ''}
+        </div>
+
+        <div class="fc-actions">
+          <button class="fc-action-btn${liked ? ' liked' : ''}" data-action="like" data-key="${key}">
+            <span>${liked ? '❤️' : '🤍'}</span><span>${nLikes > 0 ? nLikes : ''} Suka</span>
+          </button>
+          <button class="fc-action-btn" data-action="toggle-comments" data-key="${key}">
+            <span>💬</span><span>${nComments > 0 ? nComments : ''} Komen</span>
+          </button>
+          <button class="fc-action-btn" data-action="share" data-key="${key}">
+            <span>🔗</span><span>Kongsi</span>
+          </button>
+        </div>
+
+        <div class="fc-comments${isCommentsOpen ? '' : ' hidden'}" data-key="${key}">
+          <div class="fc-comment-list" data-key="${key}"></div>
+          ${currentUser ? `
+            <form class="fc-comment-form" data-key="${key}">
+              <input type="text" class="input" placeholder="Tulis komen…" maxlength="500" data-key="${key}" />
+              <button type="submit" class="btn btn-ink btn-sm">Hantar</button>
+            </form>
+          ` : `<p style="font-size:.78rem;color:var(--muted);margin-top:.5rem;">
+              <a href="#" data-action="login" style="color:var(--amber);text-decoration:none;font-weight:600;">Log masuk</a> untuk tulis komen.
+            </p>`}
         </div>`;
       feedList.appendChild(card);
+
+      if (isCommentsOpen) renderInlineComments(key, card.querySelector('.fc-comment-list'));
+
+      if (openMenuKey === key) card.querySelector('.fc-menu').classList.remove('hidden');
     });
 
+    // ── Card interactions ──
+    feedList.querySelectorAll('[data-action="menu"]').forEach(btn => btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const key = btn.dataset.key;
+      const willOpen = openMenuKey !== key;
+      openMenuKey = willOpen ? key : null;
+      document.querySelectorAll('.fc-menu').forEach(m => m.classList.add('hidden'));
+      if (willOpen) btn.parentElement.querySelector('.fc-menu').classList.remove('hidden');
+    }));
     feedList.querySelectorAll('[data-action="edit"]').forEach(btn =>
-      btn.addEventListener('click', () => openPostModal(postsState[btn.dataset.key], btn.dataset.key)));
+      btn.addEventListener('click', () => { openMenuKey = null; openPostModal(postsState[btn.dataset.key], btn.dataset.key); }));
     feedList.querySelectorAll('[data-action="delete"]').forEach(btn =>
-      btn.addEventListener('click', () => padamPost(btn.dataset.key)));
+      btn.addEventListener('click', () => { openMenuKey = null; padamPost(btn.dataset.key); }));
+    feedList.querySelectorAll('[data-action="share"]').forEach(btn =>
+      btn.addEventListener('click', () => { openMenuKey = null; sharePost(btn.dataset.key); }));
+    feedList.querySelectorAll('[data-action="like"]').forEach(btn =>
+      btn.addEventListener('click', () => toggleLike(btn.dataset.key)));
+    feedList.querySelectorAll('[data-action="toggle-comments"]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.key;
+        openComments.has(key) ? openComments.delete(key) : openComments.add(key);
+        renderFeedAndBanner();
+      }));
+    feedList.querySelectorAll('[data-action="login"]').forEach(a =>
+      a.addEventListener('click', e => { e.preventDefault(); $('btnOpenLogin').click(); }));
+    feedList.querySelectorAll('.fc-comment-form').forEach(form =>
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const key = form.dataset.key;
+        const input = form.querySelector('input');
+        const text = input.value.trim();
+        if (!text || !currentUser) return;
+        input.disabled = true;
+        const newRef = push(ref(db, `comments/${key}`));
+        await set(newRef, { userId: currentUser.uid, text, createdAt: Date.now() });
+        input.value = ''; input.disabled = false;
+      }));
+  }
+
+  async function toggleLike(postKey) {
+    if (!currentUser) { showBanner('Sila log masuk untuk menyukai acara ini.', true); return; }
+    const lr = ref(db, `likes/${postKey}/${currentUser.uid}`);
+    const s  = await get(lr);
+    s.exists() ? await remove(lr) : await set(lr, true);
+  }
+
+  async function sharePost(postKey) {
+    const url = `${location.origin}${location.pathname}#post/${postKey}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'SubisKini Acara', url }); } catch {}
+    } else {
+      await navigator.clipboard.writeText(url);
+      showBanner('Pautan disalin! 📋');
+    }
+  }
+
+  async function renderInlineComments(postKey, listEl) {
+    const data = commentsState[postKey] || {};
+    const entries = Object.entries(data).sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
+    if (!entries.length) {
+      listEl.innerHTML = '<p style="font-size:.78rem;color:var(--muted);padding:.35rem 0;">Belum ada komen. Jadi yang pertama!</p>';
+      return;
+    }
+    const html = await Promise.all(entries.map(async ([, c]) => {
+      const u = usersState[c.userId] || {};
+      const name = u.displayName || u.username || 'Pengguna';
+      const initial = name[0].toUpperCase();
+      const ts = c.createdAt ? new Date(c.createdAt).toLocaleString('ms-MY', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      return `
+        <div class="fc-comment-item">
+          <div class="fc-avatar-sm">${u.photoURL ? `<img src="${escAttr(u.photoURL)}" alt="" />` : esc(initial)}</div>
+          <div class="fc-comment-bubble">
+            <div class="fc-comment-name">${esc(name)} ${ts ? `<span style="font-weight:400;color:var(--muted);font-size:.7rem;">· ${esc(ts)}</span>` : ''}</div>
+            <div class="fc-comment-text">${esc(c.text)}</div>
+          </div>
+        </div>`;
+    }));
+    listEl.innerHTML = html.join('');
   }
 
   // ── POST MODAL ──
