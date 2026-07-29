@@ -440,7 +440,36 @@
   .multi-preview-grid { display: none; grid-template-columns: repeat(3,1fr); gap: .5rem; margin-top: .75rem; }
   .multi-preview-grid img { width: 100%; height: 70px; object-fit: cover; border-radius: 8px; }
   .gallery-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: .5rem; margin-top: .75rem; }
-  .gallery-grid img { width: 100%; height: 100px; object-fit: cover; border-radius: 8px; cursor: pointer; }
+  .gallery-grid img { width: 100%; height: 100px; object-fit: cover; border-radius: 8px; cursor: zoom-in; }
+  .fc-expanded { margin-top: .25rem; padding-top: .25rem; border-top: 1px dashed var(--line); }
+
+  /* ── LIGHTBOX ── */
+  .lightbox-overlay {
+    position: fixed; inset: 0; background: rgba(14,28,42,.92);
+    z-index: 80; display: flex; align-items: center; justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .lightbox-img { max-width: 100%; max-height: 82vh; object-fit: contain; border-radius: 6px; }
+  .lightbox-close {
+    position: absolute; top: 1rem; right: 1.25rem;
+    width: 36px; height: 36px; border-radius: 50%;
+    border: none; background: rgba(255,255,255,.15); color: #fff;
+    font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .lightbox-close:hover { background: rgba(255,255,255,.28); }
+  .lightbox-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 44px; height: 44px; border-radius: 50%;
+    border: none; background: rgba(255,255,255,.15); color: #fff;
+    font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .lightbox-nav:hover { background: rgba(255,255,255,.28); }
+  .lightbox-prev { left: .75rem; }
+  .lightbox-next { right: .75rem; }
+  .lightbox-counter {
+    position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.75); font-size: .78rem;
+  }
   .gallery-section-title { font-size: .75rem; font-weight: 700; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; margin-top: 1.5rem; }
 
   /* ── POST TYPE SELECTOR ── */
@@ -736,6 +765,14 @@
 </div>
 
 <!-- ═══ MODAL: CIPTA/SUNTING PROGRAM ═══ -->
+<div id="lightboxModal" class="lightbox-overlay hidden">
+  <button id="lightboxClose" class="lightbox-close" title="Tutup">✕</button>
+  <button id="lightboxPrev" class="lightbox-nav lightbox-prev hidden" title="Sebelum">‹</button>
+  <img id="lightboxImg" class="lightbox-img" src="" alt="" />
+  <button id="lightboxNext" class="lightbox-nav lightbox-next hidden" title="Seterus">›</button>
+  <span id="lightboxCounter" class="lightbox-counter"></span>
+</div>
+
 <div id="postModal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')" style="align-items:flex-start;padding-top:2rem;">
   <div class="post-modal-box">
     <div class="post-modal-hdr">
@@ -1155,6 +1192,7 @@ function initApp() {
   // ── FEED (real-time) ──
   let usersState = {};
   let openComments = new Set();
+  let openExpanded = new Set();
   let openMenuKey = null;
   let dataListenersStarted = false;
   function startDataListeners() {
@@ -1225,23 +1263,48 @@ function initApp() {
       const nLikes   = likeCount(key);
       const nComments = comentCount(key);
       const isCommentsOpen = openComments.has(key);
+      const isExpanded = openExpanded.has(key);
+
+      const posterImgs   = post.posterImages && post.posterImages.length ? post.posterImages : (post.posters?.eventPoster ? [post.posters.eventPoster] : []);
+      const activityImgs = post.activityImages || [];
+      const winnerImgs   = post.winnerImages || [];
+      const hasExtra     = type === 'event' && (posterImgs.length > 1 || activityImgs.length > 0 || winnerImgs.length > 0);
 
       const metaLine = type === 'event'
         ? `${esc(post.eventDay || '')}, ${esc(post.eventDate || '')} · ${esc(post.location || '')}`
         : (type === 'poll' ? '📊 Tinjauan' : '❓ Soalan');
 
       const bodyHtml = type === 'event' ? `
-          ${post.category ? `<a href="#tag/${encodeURIComponent(post.category)}" class="badge badge-amber" style="text-decoration:none;margin-bottom:.4rem;display:inline-block;">${esc(post.category)}</a>` : ''}
-          <a href="#post/${key}" class="fc-title serif" style="display:block;">${esc(post.title)}</a>
-          <a href="#org/${encodeURIComponent(post.organiser)}" class="date-chip" style="text-decoration:none;margin-top:.3rem;">🏫 ${esc(post.organiser)}</a>
+          ${post.category ? `<span class="badge badge-amber" data-action="filter-tag" data-value="${escAttr(post.category)}" style="cursor:pointer;margin-bottom:.4rem;display:inline-block;">${esc(post.category)}</span>` : ''}
+          <span class="fc-title serif" data-action="${hasExtra ? 'toggle-expand' : ''}" data-key="${key}" style="display:block;${hasExtra ? 'cursor:pointer;' : ''}">${esc(post.title)}</span>
+          ${post.organiser ? `<span class="date-chip" data-action="filter-org" data-value="${escAttr(post.organiser)}" style="cursor:pointer;margin-top:.3rem;">🏫 ${esc(post.organiser)}</span>` : ''}
           ${post.registrationLink ? `<a href="${escAttr(post.registrationLink)}" target="_blank" rel="noopener" class="btn btn-amber btn-sm" style="margin-top:.6rem;">Daftar Sekarang →</a>` : ''}
+          ${hasExtra ? `<button class="fc-action-btn" data-action="toggle-expand" data-key="${key}" style="margin-top:.5rem;padding:0;">${isExpanded ? '▲ Kurangkan' : '▼ Info Lanjut & Gambar'}</button>` : ''}
+          ${isExpanded ? `
+            <div class="fc-expanded" data-key="${key}">
+              ${posterImgs.length > 1 ? `
+                <p class="gallery-section-title">🖼 Poster</p>
+                <div class="gallery-grid" data-action="gallery-click" data-gallery="poster" data-key="${key}">
+                  ${posterImgs.map((u, i) => `<img src="${escAttr(u)}" data-idx="${i}" />`).join('')}
+                </div>` : ''}
+              ${activityImgs.length ? `
+                <p class="gallery-section-title">📷 Gambar Aktiviti</p>
+                <div class="gallery-grid" data-action="gallery-click" data-gallery="activity" data-key="${key}">
+                  ${activityImgs.map((u, i) => `<img src="${escAttr(u)}" data-idx="${i}" />`).join('')}
+                </div>` : ''}
+              ${winnerImgs.length ? `
+                <p class="gallery-section-title">🏆 Hebahan Pemenang</p>
+                <div class="gallery-grid" data-action="gallery-click" data-gallery="winner" data-key="${key}">
+                  ${winnerImgs.map((u, i) => `<img src="${escAttr(u)}" data-idx="${i}" />`).join('')}
+                </div>` : ''}
+            </div>` : ''}
         ` : type === 'poll' ? `
           <span class="question-badge">📊 Tinjauan</span>
-          <a href="#post/${key}" class="fc-title serif" style="display:block;margin-bottom:.6rem;">${esc(post.title)}</a>
+          <span class="fc-title serif" style="display:block;margin-bottom:.6rem;">${esc(post.title)}</span>
           <div class="poll-block" data-key="${key}"></div>
         ` : `
           <span class="question-badge">❓ Soalan</span>
-          <a href="#post/${key}" class="fc-title serif" style="display:block;">${esc(post.title)}</a>
+          <span class="fc-title serif" style="display:block;">${esc(post.title)}</span>
           ${post.questionBody ? `<p style="font-size:.85rem;color:var(--muted);margin-top:.3rem;">${esc(post.questionBody)}</p>` : ''}
         `;
 
@@ -1265,7 +1328,7 @@ function initApp() {
         </div>
 
         ${poster
-          ? `<a href="#post/${key}" class="fc-poster-link"><img src="${escAttr(poster)}" class="fc-poster" alt="${escAttr(post.title)}" loading="lazy" /></a>`
+          ? `<div class="fc-poster-link" data-action="open-poster" data-key="${key}" style="cursor:zoom-in;"><img src="${escAttr(poster)}" class="fc-poster" alt="${escAttr(post.title)}" loading="lazy" /></div>`
           : (type === 'event' ? `<div class="fc-poster-placeholder">📌</div>` : '')}
 
         <div class="fc-body">${bodyHtml}</div>
@@ -1281,7 +1344,6 @@ function initApp() {
             <span>🔗</span><span>Kongsi</span>
           </button>
         </div>
-        <p style="font-size:.7rem;color:var(--muted);padding:0 1rem .6rem;margin:0;">👆 Tekan kad untuk maklumat lanjut · tekan nama untuk lihat profil</p>
 
         <div class="fc-comments${isCommentsOpen ? '' : ' hidden'}" data-key="${key}">
           <div class="fc-comment-list" data-key="${key}"></div>
@@ -1327,6 +1389,32 @@ function initApp() {
       }));
     feedList.querySelectorAll('[data-action="login"]').forEach(a =>
       a.addEventListener('click', e => { e.preventDefault(); $('btnOpenLogin').click(); }));
+    feedList.querySelectorAll('[data-action="filter-tag"]').forEach(el =>
+      el.addEventListener('click', e => { e.stopPropagation(); location.hash = '#tag/' + encodeURIComponent(el.dataset.value); }));
+    feedList.querySelectorAll('[data-action="filter-org"]').forEach(el =>
+      el.addEventListener('click', e => { e.stopPropagation(); location.hash = '#org/' + encodeURIComponent(el.dataset.value); }));
+    feedList.querySelectorAll('[data-action="toggle-expand"]').forEach(el =>
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        const key = el.dataset.key;
+        openExpanded.has(key) ? openExpanded.delete(key) : openExpanded.add(key);
+        renderFeedAndBanner();
+      }));
+    feedList.querySelectorAll('[data-action="open-poster"]').forEach(el =>
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        const post = postsState[el.dataset.key] || {};
+        const imgs = post.posterImages && post.posterImages.length ? post.posterImages : (post.posters?.eventPoster ? [post.posters.eventPoster] : []);
+        if (imgs.length) openLightbox(imgs, 0);
+      }));
+    feedList.querySelectorAll('[data-action="gallery-click"]').forEach(grid =>
+      grid.querySelectorAll('img').forEach(img => img.addEventListener('click', e => {
+        e.stopPropagation();
+        const post = postsState[grid.dataset.key] || {};
+        const field = grid.dataset.gallery === 'poster' ? 'posterImages' : grid.dataset.gallery === 'activity' ? 'activityImages' : 'winnerImages';
+        const imgs = post[field] || [];
+        openLightbox(imgs, Number(img.dataset.idx));
+      })));
     feedList.querySelectorAll('.fc-comment-form').forEach(form =>
       form.addEventListener('submit', async e => {
         e.preventDefault();
@@ -1388,6 +1476,35 @@ function initApp() {
     container.querySelectorAll('.poll-bar-wrap').forEach(el =>
       el.addEventListener('click', () => toggleVote(el.dataset.pollKey, el.dataset.optId)));
   }
+
+  // ── LIGHTBOX (gambar penuh) ──
+  let lightboxImgs = [], lightboxIdx = 0;
+  const lightboxModal = $('lightboxModal');
+
+  function renderLightbox() {
+    $('lightboxImg').src = lightboxImgs[lightboxIdx] || '';
+    const multi = lightboxImgs.length > 1;
+    $('lightboxPrev').classList.toggle('hidden', !multi);
+    $('lightboxNext').classList.toggle('hidden', !multi);
+    $('lightboxCounter').textContent = multi ? `${lightboxIdx + 1} / ${lightboxImgs.length}` : '';
+  }
+  function openLightbox(imgs, index) {
+    if (!imgs || !imgs.length) return;
+    lightboxImgs = imgs; lightboxIdx = index || 0;
+    renderLightbox();
+    lightboxModal.classList.remove('hidden');
+  }
+  function closeLightbox() { lightboxModal.classList.add('hidden'); }
+  $('lightboxClose').addEventListener('click', closeLightbox);
+  lightboxModal.addEventListener('click', e => { if (e.target === lightboxModal) closeLightbox(); });
+  $('lightboxPrev').addEventListener('click', e => { e.stopPropagation(); lightboxIdx = (lightboxIdx - 1 + lightboxImgs.length) % lightboxImgs.length; renderLightbox(); });
+  $('lightboxNext').addEventListener('click', e => { e.stopPropagation(); lightboxIdx = (lightboxIdx + 1) % lightboxImgs.length; renderLightbox(); });
+  document.addEventListener('keydown', e => {
+    if (lightboxModal.classList.contains('hidden')) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft' && lightboxImgs.length > 1) { lightboxIdx = (lightboxIdx - 1 + lightboxImgs.length) % lightboxImgs.length; renderLightbox(); }
+    if (e.key === 'ArrowRight' && lightboxImgs.length > 1) { lightboxIdx = (lightboxIdx + 1) % lightboxImgs.length; renderLightbox(); }
+  });
 
   async function sharePost(postKey) {
     const url = `${location.origin}${location.pathname}#post/${postKey}`;
