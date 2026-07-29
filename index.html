@@ -1677,9 +1677,36 @@ function initApp() {
       latestPost = p;
       const type = p.type || 'event';
 
-      const pdPoster = $('pdPoster');
-      if (p.posters?.eventPoster) { pdPoster.src = p.posters.eventPoster; pdPoster.classList.remove('hidden'); }
-      else pdPoster.classList.add('hidden');
+      const pdPosterGallery = $('pdPosterGallery');
+      const posterImgs = (p.posterImages && p.posterImages.length) ? p.posterImages : (p.posters?.eventPoster ? [p.posters.eventPoster] : []);
+      if (posterImgs.length) {
+        const multi = posterImgs.length > 1;
+        pdPosterGallery.innerHTML = posterImgs.map(u =>
+          `<img src="${escAttr(u)}" style="${multi ? 'width:280px;flex-shrink:0;' : 'width:100%;'}height:240px;object-fit:cover;cursor:pointer;" />`
+        ).join('');
+        pdPosterGallery.classList.remove('hidden');
+      } else {
+        pdPosterGallery.innerHTML = '';
+        pdPosterGallery.classList.add('hidden');
+      }
+
+      const pdActivitySection = $('pdActivitySection'), pdActivityGallery = $('pdActivityGallery');
+      if (p.activityImages && p.activityImages.length) {
+        pdActivityGallery.innerHTML = p.activityImages.map(u => `<img src="${escAttr(u)}" />`).join('');
+        pdActivitySection.classList.remove('hidden');
+      } else {
+        pdActivityGallery.innerHTML = '';
+        pdActivitySection.classList.add('hidden');
+      }
+
+      const pdWinnerSection = $('pdWinnerSection'), pdWinnerGallery = $('pdWinnerGallery');
+      if (p.winnerImages && p.winnerImages.length) {
+        pdWinnerGallery.innerHTML = p.winnerImages.map(u => `<img src="${escAttr(u)}" />`).join('');
+        pdWinnerSection.classList.remove('hidden');
+      } else {
+        pdWinnerGallery.innerHTML = '';
+        pdWinnerSection.classList.add('hidden');
+      }
 
       $('pdTitle').textContent = p.title || '';
       $('pdOrganiser').textContent = type === 'event' ? (p.organiser || '') : (type === 'poll' ? '📊 Tinjauan' : '❓ Soalan');
