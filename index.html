@@ -483,7 +483,7 @@
   <section id="viewFeed">
     <!-- Highlight banner -->
     <div id="highlightBanner" class="highlight-banner hidden" style="margin-bottom:1.5rem;">
-      <p style="font-size:.7rem;font-weight:700;letter-spacing:.1em;color:rgba(246,243,238,.5);text-transform:uppercase;margin-bottom:.75rem;">🔥 Acara Akan Datang</p>
+      <p style="font-size:.7rem;font-weight:700;letter-spacing:.1em;color:rgba(246,243,238,.5);text-transform:uppercase;margin-bottom:.75rem;">🔥 Program Akan Datang</p>
       <div id="highlightScroll" class="highlight-scroll"></div>
     </div>
 
@@ -494,13 +494,13 @@
 
     <div id="feedFilterBar" class="hidden" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;background:var(--white);border:1px solid var(--line);border-radius:10px;padding:.65rem 1rem;margin-bottom:1rem;">
       <span id="feedFilterText" style="font-size:.82rem;color:var(--ink);"></span>
-      <a href="#" style="font-size:.78rem;color:var(--amber);font-weight:600;text-decoration:none;">✕ Papar semua acara</a>
+      <a href="#" style="font-size:.78rem;color:var(--amber);font-weight:600;text-decoration:none;">✕ Papar semua program</a>
     </div>
 
     <div id="feedEmpty" class="empty-state hidden">
       <div class="empty-icon">📌</div>
-      <div class="empty-title">Tiada acara lagi</div>
-      <div class="empty-sub">Jadi yang pertama mencipta acara untuk komuniti Subis!</div>
+      <div class="empty-title">Tiada program lagi</div>
+      <div class="empty-sub">Jadi yang pertama mencipta program untuk komuniti Subis!</div>
     </div>
 
     <div id="feedList" style="display:flex;flex-direction:column;gap:.75rem;"></div>
@@ -509,8 +509,8 @@
   <!-- VIEW: SINGLE POST -->
   <section id="viewPost" class="hidden">
     <a href="#" id="btnBackToFeed" class="back-link">← Kembali ke feed</a>
-    <div id="postDetailLoading" style="text-align:center;padding:3rem;color:var(--muted);">Memuatkan acara…</div>
-    <div id="postDetailNotFound" class="hidden empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Acara tidak dijumpai</div></div>
+    <div id="postDetailLoading" style="text-align:center;padding:3rem;color:var(--muted);">Memuatkan program…</div>
+    <div id="postDetailNotFound" class="hidden empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Program tidak dijumpai</div></div>
 
     <div id="postDetailContent" class="card hidden">
       <div id="pdPosterGallery" class="hidden" style="display:flex;overflow-x:auto;scrollbar-width:none;"></div>
@@ -671,7 +671,7 @@
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-top:1rem;">
-        <div class="stat-box"><p class="stat-box-n serif" id="statEvents">0</p><p class="stat-box-l">Acara dicipta</p></div>
+        <div class="stat-box"><p class="stat-box-n serif" id="statEvents">0</p><p class="stat-box-l">Program dicipta</p></div>
         <div class="stat-box"><p class="stat-box-n serif" id="statLikes">0</p><p class="stat-box-l">Post disukai</p></div>
         <div class="stat-box"><p class="stat-box-n serif" id="statComments">0</p><p class="stat-box-l">Komen ditulis</p></div>
       </div>
@@ -735,7 +735,7 @@
   </div>
 </div>
 
-<!-- ═══ MODAL: CIPTA/SUNTING ACARA ═══ -->
+<!-- ═══ MODAL: CIPTA/SUNTING PROGRAM ═══ -->
 <div id="postModal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')" style="align-items:flex-start;padding-top:2rem;">
   <div class="post-modal-box">
     <div class="post-modal-hdr">
@@ -752,7 +752,7 @@
         <div class="field">
           <label>Jenis Post *</label>
           <div id="postTypeSelector" style="display:flex;gap:.5rem;">
-            <button type="button" class="btn btn-outline btn-sm post-type-btn" data-type="event" style="flex:1;">📅 Acara</button>
+            <button type="button" class="btn btn-outline btn-sm post-type-btn" data-type="event" style="flex:1;">📅 Program</button>
             <button type="button" class="btn btn-outline btn-sm post-type-btn" data-type="poll" style="flex:1;">📊 Tinjauan</button>
             <button type="button" class="btn btn-outline btn-sm post-type-btn" data-type="question" style="flex:1;">❓ Soalan</button>
           </div>
@@ -760,7 +760,7 @@
         </div>
 
         <div class="field">
-          <label id="postTitleLabel">Tajuk Acara *</label>
+          <label id="postTitleLabel">Tajuk Program *</label>
           <input type="text" required id="postTitle" placeholder="cth: Pertandingan Robotik Kebangsaan" class="input" />
         </div>
 
@@ -801,7 +801,7 @@
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
           <div class="field">
-            <label>Tarikh Acara *</label>
+            <label>Tarikh Program *</label>
             <input type="date" required id="postEventDate" class="input" />
           </div>
           <div class="field">
@@ -814,7 +814,7 @@
           <input type="url" id="postRegLink" placeholder="https://…" class="input" />
         </div>
         <div class="field">
-          <label>Poster Acara (opsyenal, maks 6)</label>
+          <label>Poster Program (opsyenal, maks 6)</label>
           <div class="poster-upload-area" id="posterUploadArea">
             <input type="file" accept="image/*" multiple id="postEventPoster" />
             <div id="posterUploadHint">
@@ -851,7 +851,7 @@
         </div>
         <label style="display:flex;align-items:center;gap:.6rem;font-size:.85rem;cursor:pointer;margin-bottom:1rem;color:var(--ink);">
           <input type="checkbox" id="postHighlighted" style="width:16px;height:16px;accent-color:var(--amber);" />
-          Sertakan dalam banner "Acara Akan Datang"
+          Sertakan dalam banner "Program Akan Datang"
         </label>
         </div>
         <button type="submit" id="btnSubmitPost" class="btn btn-amber" style="width:100%;justify-content:center;padding:.7rem;">
@@ -1178,8 +1178,8 @@ function initApp() {
         activeFilter.type === 'tag' ? p.category === activeFilter.value : p.organiser === activeFilter.value);
       feedFilterBar.classList.remove('hidden');
       feedFilterText.textContent = activeFilter.type === 'tag'
-        ? `🏷 Menunjukkan acara bertag "${activeFilter.value}"`
-        : `🏫 Menunjukkan acara oleh "${activeFilter.value}"`;
+        ? `🏷 Menunjukkan program bertag "${activeFilter.value}"`
+        : `🏫 Menunjukkan program oleh "${activeFilter.value}"`;
     } else {
       feedFilterBar.classList.add('hidden');
     }
@@ -1334,7 +1334,7 @@ function initApp() {
   }
 
   async function toggleLike(postKey) {
-    if (!currentUser) { showBanner('Sila log masuk untuk menyukai acara ini.', true); return; }
+    if (!currentUser) { showBanner('Sila log masuk untuk menyukai program ini.', true); return; }
     try {
       const lr = ref(db, `likes/${postKey}/${currentUser.uid}`);
       const s  = await get(lr);
@@ -1490,7 +1490,7 @@ function initApp() {
   }
 
   const titleLabels = {
-    event: 'Tajuk Acara *',
+    event: 'Tajuk Program *',
     poll: 'Soalan Tinjauan *',
     question: 'Soalan *'
   };
@@ -1633,10 +1633,10 @@ function initApp() {
   });
 
   async function padamPost(postKey) {
-    if (!confirm('Padam acara ini? Tindakan tidak boleh diundur.')) return;
+    if (!confirm('Padam program ini? Tindakan tidak boleh diundur.')) return;
     try {
       await remove(ref(db, 'posts/' + postKey));
-      showBanner('Acara dipadam.');
+      showBanner('Program dipadam.');
     } catch (err) { showBanner('Gagal memadam: ' + err.message, true); }
   }
 
@@ -1648,6 +1648,7 @@ function initApp() {
     unsubPostListeners = [];
     let currentPostAuthorId = null;
     let latestPost = null;
+    let votesUnsub = null;
 
     const loading = $('postDetailLoading'), notFound = $('postDetailNotFound'), content = $('postDetailContent');
     [notFound, content].forEach(e => e.classList.add('hidden'));
@@ -1682,15 +1683,18 @@ function initApp() {
 
       const pollBlock = $('pdPollBlock');
       pollBlock.classList.toggle('hidden', type !== 'poll');
-      if (type === 'poll') renderPollBlock(p, postKey, pollBlock);
+      if (type === 'poll') {
+        renderPollBlock(p, postKey, pollBlock);
+        if (!votesUnsub) {
+          votesUnsub = onValue(ref(db, `votes/${postKey}`), vsnap => {
+            votesState[postKey] = vsnap.val() || {};
+            if (latestPost) renderPollBlock(latestPost, postKey, $('pdPollBlock'));
+          }, err => showBanner('Gagal muat undi: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
+          unsubPostListeners.push(votesUnsub);
+        }
+      }
     });
     unsubPostListeners.push(unsub1);
-
-    const unsubVotes = onValue(ref(db, `votes/${postKey}`), snap => {
-      votesState[postKey] = snap.val() || {};
-      if (latestPost && (latestPost.type === 'poll')) renderPollBlock(latestPost, postKey, $('pdPollBlock'));
-    }, err => showBanner('Gagal muat undi: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
-    unsubPostListeners.push(unsubVotes);
 
     // Like
     const btnLike = $('btnLike'), likeIcon = $('likeIcon'), likeCountEl = $('likeCount');
