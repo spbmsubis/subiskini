@@ -177,6 +177,20 @@
   }
   .highlight-nav-btn:hover { background: rgba(255,255,255,.2); }
 
+  /* ── SKELETON LOADING ── */
+  @keyframes skeleton-shimmer { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
+  .skeleton {
+    background: linear-gradient(90deg, var(--paper2) 25%, #EAE1D0 37%, var(--paper2) 63%);
+    background-size: 400px 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    border-radius: 8px;
+  }
+  .skel-card { background: var(--white); border: 1px solid var(--line); border-radius: 20px; padding: 1rem 1.1rem; box-shadow: var(--shadow-sm); }
+  .skel-row { display: flex; align-items: center; gap: .65rem; margin-bottom: .9rem; }
+  .skel-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+  .skel-line { height: 11px; }
+  .skel-poster { height: 160px; border-radius: 14px; margin-top: .3rem; }
+
   /* ── PAGE HERO (tag / organiser page) ── */
   .page-hero {
     display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
@@ -187,6 +201,7 @@
   .page-hero::after {
     content: ''; position: absolute; inset: 0;
     background: radial-gradient(360px 220px at 100% 0%, rgba(245,169,61,.28), transparent 70%);
+    pointer-events: none;
   }
   .page-hero-icon {
     width: 52px; height: 52px; border-radius: 16px; flex-shrink: 0;
@@ -199,6 +214,46 @@
   .page-hero-title { color: var(--paper); font-size: 1.5rem; line-height: 1.15; }
   .page-hero-sub { color: rgba(246,243,238,.65); font-size: .8rem; margin-top: .3rem; }
   .page-hero-back { position: relative; flex-shrink: 0; }
+  .page-hero-breadcrumb { font-size: .72rem; color: rgba(246,243,238,.55); margin-bottom: .3rem; }
+  .page-hero-breadcrumb a { color: rgba(246,243,238,.8); text-decoration: none; }
+  .page-hero-breadcrumb a:hover { color: var(--amber2); text-decoration: underline; }
+
+  /* ── TOOLBAR (search + directory links) ── */
+  .feed-toolbar { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .search-wrap { flex: 1; min-width: 200px; position: relative; display: flex; align-items: center; }
+  .search-icon { position: absolute; left: .85rem; font-size: .85rem; opacity: .55; pointer-events: none; }
+  .search-input {
+    width: 100%; border: 1.5px solid var(--line); border-radius: 999px;
+    padding: .6rem 2.2rem .6rem 2.3rem; font-size: .82rem; font-family: inherit;
+    color: var(--ink); background: var(--white); transition: border-color .12s, box-shadow .12s;
+  }
+  .search-input:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgba(226,98,42,.12); }
+  .search-clear {
+    position: absolute; right: .5rem; width: 22px; height: 22px; border-radius: 50%;
+    border: none; background: var(--paper2); color: var(--muted); cursor: pointer;
+    font-size: .7rem; display: flex; align-items: center; justify-content: center;
+  }
+  .search-clear:hover { background: var(--line); }
+  .toolbar-links { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .toolbar-link {
+    font-size: .74rem; font-weight: 700; color: var(--ink);
+    background: var(--white); border: 1.5px solid var(--line); border-radius: 999px;
+    padding: .5rem .9rem; text-decoration: none; white-space: nowrap; transition: border-color .12s, color .12s;
+  }
+  .toolbar-link:hover { border-color: var(--amber); color: var(--amber); }
+
+  /* ── DIRECTORY GRID ── */
+  .directory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; }
+  .directory-chip {
+    display: flex; flex-direction: column; gap: .3rem;
+    background: var(--white); border: 1px solid var(--line); border-radius: 16px;
+    padding: 1rem; text-decoration: none; box-shadow: var(--shadow-sm);
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+  }
+  .directory-chip:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--amber2); }
+  .directory-chip-icon { font-size: 1.3rem; }
+  .directory-chip-name { font-size: .85rem; font-weight: 700; color: var(--ink); line-height: 1.25; }
+  .directory-chip-count { font-size: .72rem; color: var(--muted); }
 
   /* ── AUTH MODAL ── */
   .modal-overlay {
@@ -408,6 +463,7 @@
   .fc-header-info { flex: 1; min-width: 0; }
   .fc-author { font-size: .85rem; font-weight: 800; color: var(--ink); line-height: 1.2; }
   .fc-meta { font-size: .72rem; color: var(--muted); margin-top: .1rem; }
+  .fc-eventinfo { font-size: .78rem; color: var(--teal2); font-weight: 600; margin-top: .35rem; }
   .fc-menu-btn { background: transparent; border: none; cursor: pointer; font-size: 1.1rem; color: var(--muted); padding: .3rem .5rem; border-radius: 8px; line-height: 1; font-family: inherit; }
   .fc-menu-btn:hover { background: var(--paper2); color: var(--ink); }
   .fc-menu {
@@ -543,6 +599,32 @@
   .pi-icon { font-size: 1.1rem; flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px; background: var(--paper2); display: flex; align-items: center; justify-content: center; }
   .pi-title { font-size: .85rem; color: var(--ink); font-weight: 700; }
   .pi-sub { font-size: .75rem; color: var(--muted); margin-top: .12rem; }
+
+  /* ── KALENDAR ── */
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; gap: .5rem; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .35rem; }
+  .cal-weekday { text-align: center; font-size: .66rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding-bottom: .35rem; }
+  .cal-day { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 12px; background: var(--white); padding: .35rem; display: flex; flex-direction: column; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; position: relative; }
+  .cal-day:hover { border-color: var(--amber); transform: translateY(-1px); }
+  .cal-day.empty { background: transparent; border-color: transparent; cursor: default; }
+  .cal-day.empty:hover { transform: none; }
+  .cal-day.today { border-color: var(--teal); border-width: 2px; }
+  .cal-day.has-events { background: linear-gradient(180deg, rgba(226,98,42,.07), transparent); }
+  .cal-day.selected { outline: 2px solid var(--amber); outline-offset: -2px; }
+  .cal-day-num { font-size: .74rem; font-weight: 700; color: var(--ink); }
+  .cal-day-dots { display: flex; gap: 2px; margin-top: auto; flex-wrap: wrap; }
+  .cal-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); flex-shrink: 0; }
+  .cal-day-count { font-size: .6rem; color: var(--amber); font-weight: 700; margin-top: 1px; }
+  .cal-day-panel-item { display: flex; align-items: center; gap: .75rem; padding: .7rem .9rem; text-decoration: none; color: inherit; }
+
+  /* ── DRAF AUTO-SAVE ── */
+  .draft-banner {
+    display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+    background: rgba(28,110,100,.08); border: 1px solid rgba(28,110,100,.2);
+    border-radius: 12px; padding: .5rem .8rem; margin-bottom: 1rem;
+    font-size: .76rem; color: var(--teal);
+  }
+  .draft-banner button { background: none; border: none; color: var(--teal); font-weight: 700; cursor: pointer; text-decoration: underline; font-size: .76rem; font-family: inherit; }
 </style>
 </head>
 <body>
@@ -588,6 +670,10 @@
       <div class="composer-body" id="postFormWrap">
         <div id="postError" class="alert alert-err hidden"></div>
         <div id="postProgress" class="progress-msg hidden"></div>
+        <div id="draftBanner" class="draft-banner hidden">
+          <span id="draftBannerText">📝 Draf disimpan automatik</span>
+          <button type="button" id="btnDiscardDraft">Buang draf</button>
+        </div>
         <form id="postForm">
           <input type="hidden" id="postId" />
           <input type="hidden" id="postType" value="event" />
@@ -698,9 +784,23 @@
       <span class="feed-title">📋 News Feed</span>
     </div>
 
+    <div class="feed-toolbar" id="feedToolbar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input id="feedSearchInput" class="search-input" type="text" placeholder="Cari program, tag, atau penganjur…" autocomplete="off" />
+        <button id="btnClearSearch" class="search-clear hidden" type="button" title="Kosongkan carian">✕</button>
+      </div>
+      <div class="toolbar-links">
+        <a href="#kalendar" class="toolbar-link">📆 Kalendar</a>
+        <a href="#tags" class="toolbar-link">🏷 Semua Tag</a>
+        <a href="#orgs" class="toolbar-link">🏫 Semua Penganjur</a>
+      </div>
+    </div>
+
     <div id="pageHero" class="page-hero hidden">
       <div class="page-hero-icon" id="pageHeroIcon"></div>
       <div class="page-hero-info">
+        <p class="page-hero-breadcrumb" id="pageHeroBreadcrumb"></p>
         <p class="page-hero-eyebrow" id="pageHeroEyebrow"></p>
         <h1 class="page-hero-title serif" id="pageHeroTitle"></h1>
         <p class="page-hero-sub" id="pageHeroSub"></p>
@@ -709,23 +809,103 @@
     </div>
 
     <div id="feedEmpty" class="empty-state hidden">
-      <div class="empty-icon">📌</div>
-      <div class="empty-title">Tiada program lagi</div>
-      <div class="empty-sub">Jadi yang pertama mencipta program untuk komuniti Subis!</div>
+      <div class="empty-icon" id="feedEmptyIcon">📌</div>
+      <div class="empty-title" id="feedEmptyTitle">Tiada program lagi</div>
+      <div class="empty-sub" id="feedEmptySub">Jadi yang pertama mencipta program untuk komuniti Subis!</div>
+    </div>
+
+    <div id="feedSkeleton" style="display:flex;flex-direction:column;gap:.75rem;">
+      <div class="skel-card">
+        <div class="skel-row"><div class="skeleton skel-avatar"></div>
+          <div style="flex:1;"><div class="skeleton skel-line" style="width:35%;margin-bottom:.4rem;"></div><div class="skeleton skel-line" style="width:20%;"></div></div>
+        </div>
+        <div class="skeleton skel-line" style="width:65%;margin-bottom:.5rem;"></div>
+        <div class="skeleton skel-poster"></div>
+      </div>
+      <div class="skel-card">
+        <div class="skel-row"><div class="skeleton skel-avatar"></div>
+          <div style="flex:1;"><div class="skeleton skel-line" style="width:45%;margin-bottom:.4rem;"></div><div class="skeleton skel-line" style="width:22%;"></div></div>
+        </div>
+        <div class="skeleton skel-line" style="width:55%;"></div>
+      </div>
     </div>
 
     <div id="feedList" style="display:flex;flex-direction:column;gap:.75rem;"></div>
+
+    <div id="feedLoadMoreWrap" class="hidden" style="text-align:center;margin-top:1.25rem;">
+      <button id="btnLoadMore" class="btn btn-outline btn-sm">Muat Lagi</button>
+    </div>
+  </section>
+
+  <!-- VIEW: DIRECTORY (Semua Tag / Semua Penganjur) -->
+  <section id="viewDirectory" class="hidden">
+    <div class="page-hero" id="dirHero">
+      <div class="page-hero-icon" id="dirHeroIcon"></div>
+      <div class="page-hero-info">
+        <p class="page-hero-breadcrumb"><a href="#">News Feed</a> › Direktori</p>
+        <p class="page-hero-eyebrow" id="dirHeroEyebrow">Direktori</p>
+        <h1 class="page-hero-title serif" id="dirHeroTitle"></h1>
+        <p class="page-hero-sub" id="dirHeroSub"></p>
+      </div>
+      <a href="#" class="btn btn-outline btn-sm page-hero-back">← Kembali ke News Feed</a>
+    </div>
+    <div id="directoryGrid" class="directory-grid"></div>
+    <div id="directoryEmpty" class="empty-state hidden">
+      <div class="empty-icon">📭</div>
+      <div class="empty-title">Tiada data lagi</div>
+    </div>
+  </section>
+
+  <!-- VIEW: KALENDAR -->
+  <section id="viewCalendar" class="hidden">
+    <div class="page-hero" id="calHero">
+      <div class="page-hero-icon">📆</div>
+      <div class="page-hero-info">
+        <p class="page-hero-breadcrumb"><a href="#">News Feed</a> › Kalendar</p>
+        <p class="page-hero-eyebrow">Kalendar</p>
+        <h1 class="page-hero-title serif">Kalendar Program</h1>
+        <p class="page-hero-sub">Lihat semua program mengikut tarikh</p>
+      </div>
+      <a href="#" class="btn btn-outline btn-sm page-hero-back">← Kembali ke News Feed</a>
+    </div>
+
+    <div class="cal-nav">
+      <button type="button" id="calPrev" class="btn btn-outline btn-sm">‹ Bulan Lepas</button>
+      <div id="calMonthLabel" class="serif" style="font-size:1.05rem;"></div>
+      <button type="button" id="calNext" class="btn btn-outline btn-sm">Bulan Depan ›</button>
+    </div>
+
+    <div id="calGrid" class="cal-grid"></div>
+
+    <div id="calDayPanel" class="hidden" style="margin-top:1.5rem;">
+      <p id="calDayPanelTitle" style="font-weight:700;font-size:.9rem;margin-bottom:.6rem;"></p>
+      <div id="calDayPanelList" style="display:flex;flex-direction:column;gap:.6rem;"></div>
+    </div>
   </section>
 
   <!-- VIEW: SINGLE POST -->
   <section id="viewPost" class="hidden">
     <a href="#" id="btnBackToFeed" class="back-link">← Kembali ke feed</a>
-    <div id="postDetailLoading" style="text-align:center;padding:3rem;color:var(--muted);">Memuatkan program…</div>
+    <div id="postDetailLoading" class="skel-card">
+      <div class="skel-row"><div class="skeleton skel-avatar"></div>
+        <div style="flex:1;"><div class="skeleton skel-line" style="width:40%;margin-bottom:.4rem;"></div><div class="skeleton skel-line" style="width:25%;"></div></div>
+      </div>
+      <div class="skeleton skel-line" style="width:70%;margin-bottom:.5rem;"></div>
+      <div class="skeleton skel-poster"></div>
+    </div>
     <div id="postDetailNotFound" class="hidden empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Program tidak dijumpai</div></div>
 
     <div id="postDetailContent" class="card hidden">
       <div id="pdPosterGallery" class="hidden" style="display:flex;overflow-x:auto;scrollbar-width:none;"></div>
       <div style="padding:1.5rem;">
+        <div id="pdOwnerHeader" style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;">
+          <a id="pdOwnerAvatarLink" href="#" class="fc-avatar-sm" style="text-decoration:none;"><span id="pdOwnerAvatar"></span></a>
+          <div style="flex:1;min-width:0;">
+            <a id="pdOwnerNameLink" href="#" style="text-decoration:none;"><span id="pdOwnerName" class="fc-author"></span></a>
+            <div id="pdPostedAt" class="fc-meta"></div>
+          </div>
+        </div>
+
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
           <div style="flex:1;min-width:0;">
             <h2 id="pdTitle" class="serif" style="font-size:1.5rem;line-height:1.2;margin-bottom:.25rem;"></h2>
@@ -781,7 +961,13 @@
 
   <!-- VIEW: PROFIL -->
   <section id="viewProfile" class="hidden">
-    <div id="profileLoading" style="text-align:center;padding:3rem;color:var(--muted);">Memuatkan profil…</div>
+    <div id="profileLoading" class="skel-card">
+      <div class="skel-row"><div class="skeleton skel-avatar" style="width:56px;height:56px;"></div>
+        <div style="flex:1;"><div class="skeleton skel-line" style="width:50%;margin-bottom:.4rem;"></div><div class="skeleton skel-line" style="width:30%;"></div></div>
+      </div>
+      <div class="skeleton skel-line" style="width:90%;margin-bottom:.4rem;"></div>
+      <div class="skeleton skel-line" style="width:60%;"></div>
+    </div>
     <div id="profileNotFound" class="hidden empty-state"><div class="empty-icon">👤</div><div class="empty-title">Profil tidak dijumpai</div></div>
 
     <div id="profileContent" class="hidden">
@@ -1008,15 +1194,48 @@ function initApp() {
   const viewFeed       = $('viewFeed');
   const viewProfile    = $('viewProfile');
   const viewPost       = $('viewPost');
+  const viewDirectory  = $('viewDirectory');
+  const viewCalendar   = $('viewCalendar');
   const feedList       = $('feedList');
   const feedEmpty      = $('feedEmpty');
+  const feedSkeleton   = $('feedSkeleton');
+  const feedLoadMoreWrap = $('feedLoadMoreWrap');
+  const btnLoadMore    = $('btnLoadMore');
+  let feedVisibleCount = 10;
+  const FEED_PAGE_SIZE = 10;
+  btnLoadMore.addEventListener('click', () => { feedVisibleCount += FEED_PAGE_SIZE; renderFeedAndBanner(); });
   const feedHeader     = $('feedHeader');
+  const feedToolbar    = $('feedToolbar');
+  const feedSearchInput = $('feedSearchInput');
+  const btnClearSearch = $('btnClearSearch');
   const pageHero       = $('pageHero');
   const pageHeroIcon   = $('pageHeroIcon');
+  const pageHeroBreadcrumb = $('pageHeroBreadcrumb');
   const pageHeroEyebrow = $('pageHeroEyebrow');
   const pageHeroTitle  = $('pageHeroTitle');
   const pageHeroSub    = $('pageHeroSub');
-  pageHero.querySelector('.page-hero-back').addEventListener('click', e => { e.preventDefault(); location.hash = ''; });
+  const dirHeroIcon    = $('dirHeroIcon');
+  const dirHeroTitle   = $('dirHeroTitle');
+  const dirHeroSub     = $('dirHeroSub');
+  const directoryGrid  = $('directoryGrid');
+  const directoryEmpty = $('directoryEmpty');
+  document.querySelectorAll('.page-hero-back').forEach(btn =>
+    btn.addEventListener('click', e => { e.preventDefault(); location.hash = ''; }));
+  let searchQuery = '';
+  feedSearchInput.addEventListener('input', () => {
+    searchQuery = feedSearchInput.value.trim().toLowerCase();
+    btnClearSearch.classList.toggle('hidden', !searchQuery);
+    feedVisibleCount = FEED_PAGE_SIZE;
+    renderFeedAndBanner();
+  });
+  btnClearSearch.addEventListener('click', () => {
+    feedSearchInput.value = '';
+    searchQuery = '';
+    btnClearSearch.classList.add('hidden');
+    feedVisibleCount = FEED_PAGE_SIZE;
+    renderFeedAndBanner();
+    feedSearchInput.focus();
+  });
   const highlightBanner = $('highlightBanner');
   const highlightScroll = $('highlightScroll');
   $('btnHlPrev').addEventListener('click', () => highlightScroll.scrollBy({ left: -220, behavior: 'smooth' }));
@@ -1030,6 +1249,9 @@ function initApp() {
   const postForm       = $('postForm');
   const postError      = $('postError');
   const postProgress   = $('postProgress');
+  const draftBanner    = $('draftBanner');
+  const draftBannerText = $('draftBannerText');
+  const btnDiscardDraft = $('btnDiscardDraft');
   const btnSubmitPost  = $('btnSubmitPost');
   const posterInput    = $('postEventPoster');
   const posterPreview  = $('postEventPosterPreview');
@@ -1171,26 +1393,35 @@ function initApp() {
 
   function updateFloatingNavActive(hash) {
     const home = $('fnavHome'), profile = $('fnavProfile');
-    home.classList.toggle('active', !hash || hash.startsWith('tag/') || hash.startsWith('org/') || hash.startsWith('post/'));
+    home.classList.toggle('active', !hash || hash.startsWith('tag/') || hash.startsWith('org/') || hash.startsWith('post/') || hash === 'tags' || hash === 'orgs' || hash === 'kalendar');
     profile.classList.toggle('active', hash.startsWith('profile/') && currentUser && hash.split('/')[1] === currentUser.uid);
   }
 
   // ── ROUTER ──
   let activeFilter = null;
+  let dataListenersStarted = false;
   window.addEventListener('hashchange', route);
   route();
 
   function route() {
     const hash = location.hash.replace(/^#\/?/, '');
-    [viewFeed, viewProfile, viewPost].forEach(v => v.classList.add('hidden'));
+    [viewFeed, viewProfile, viewPost, viewDirectory, viewCalendar].forEach(v => v.classList.add('hidden'));
     activeFilter = null;
+    feedVisibleCount = FEED_PAGE_SIZE;
     updateFloatingNavActive(hash);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     if (hash.startsWith('profile/')) {
       viewProfile.classList.remove('hidden');
       renderProfile(hash.split('/')[1]);
     } else if (hash.startsWith('post/')) {
       viewPost.classList.remove('hidden');
       renderSinglePost(hash.split('/')[1]);
+    } else if (hash === 'tags' || hash === 'orgs') {
+      viewDirectory.classList.remove('hidden');
+      renderDirectory(hash === 'tags' ? 'tag' : 'org');
+    } else if (hash === 'kalendar') {
+      viewCalendar.classList.remove('hidden');
+      renderCalendar();
     } else if (hash.startsWith('tag/')) {
       viewFeed.classList.remove('hidden');
       activeFilter = { type: 'tag', value: decodeURIComponent(hash.slice(4)) };
@@ -1203,6 +1434,113 @@ function initApp() {
       viewFeed.classList.remove('hidden');
       renderFeedAndBanner();
     }
+  }
+
+  function renderDirectory(type) {
+    const isTag = type === 'tag';
+    dirHeroIcon.textContent = isTag ? '🏷' : '🏫';
+    dirHeroTitle.textContent = isTag ? 'Semua Tag / Kategori' : 'Semua Penganjur';
+    const counts = {};
+    Object.values(postsState).forEach(p => {
+      const val = isTag ? p.category : p.organiser;
+      if (val) counts[val] = (counts[val] || 0) + 1;
+    });
+    const list = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    dirHeroSub.textContent = `${list.length} ${isTag ? 'kategori' : 'penganjur'} dijumpai`;
+    directoryEmpty.classList.toggle('hidden', list.length > 0);
+    directoryGrid.innerHTML = list.map(([val, count]) => `
+      <a href="#${isTag ? 'tag' : 'org'}/${encodeURIComponent(val)}" class="directory-chip">
+        <span class="directory-chip-icon">${isTag ? '🏷' : '🏫'}</span>
+        <span class="directory-chip-name">${esc(val)}</span>
+        <span class="directory-chip-count">${count} program</span>
+      </a>`).join('');
+  }
+
+  // ── KALENDAR ──
+  const calGrid = $('calGrid');
+  const calMonthLabel = $('calMonthLabel');
+  const calDayPanel = $('calDayPanel');
+  const calDayPanelTitle = $('calDayPanelTitle');
+  const calDayPanelList = $('calDayPanelList');
+  const BULAN_MS = ['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
+  const HARI_MS = ['Ahad','Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu'];
+  let calYear = null, calMonth = null, calSelectedDate = null;
+
+  $('calPrev').addEventListener('click', () => {
+    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+    calSelectedDate = null;
+    renderCalendar();
+  });
+  $('calNext').addEventListener('click', () => {
+    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+    calSelectedDate = null;
+    renderCalendar();
+  });
+
+  function renderCalendar() {
+    if (calYear === null) {
+      const now = new Date();
+      calYear = now.getFullYear();
+      calMonth = now.getMonth();
+    }
+    calMonthLabel.textContent = `${BULAN_MS[calMonth]} ${calYear}`;
+
+    const eventsByDay = {};
+    Object.entries(postsState).forEach(([key, p]) => {
+      if (p.type !== 'event' || !p.eventDate) return;
+      (eventsByDay[p.eventDate] = eventsByDay[p.eventDate] || []).push({ key, ...p });
+    });
+
+    const firstOfMonth = new Date(calYear, calMonth, 1);
+    const startWeekday = firstOfMonth.getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    let html = HARI_MS.map(h => `<div class="cal-weekday">${esc(h.slice(0, 3))}</div>`).join('');
+    for (let i = 0; i < startWeekday; i++) html += `<div class="cal-day empty"></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const evts = eventsByDay[dateStr] || [];
+      const cls = ['cal-day'];
+      if (evts.length) cls.push('has-events');
+      if (dateStr === todayStr) cls.push('today');
+      if (dateStr === calSelectedDate) cls.push('selected');
+      html += `<div class="${cls.join(' ')}" data-date="${dateStr}">
+        <span class="cal-day-num">${d}</span>
+        ${evts.length ? `<div class="cal-day-dots">${evts.slice(0, 4).map(() => '<span class="cal-dot"></span>').join('')}</div>${evts.length > 4 ? `<span class="cal-day-count">+${evts.length - 4}</span>` : ''}` : ''}
+      </div>`;
+    }
+    calGrid.innerHTML = html;
+
+    calGrid.querySelectorAll('.cal-day[data-date]').forEach(el => {
+      el.addEventListener('click', () => {
+        calSelectedDate = el.dataset.date;
+        calGrid.querySelectorAll('.cal-day').forEach(d => d.classList.remove('selected'));
+        el.classList.add('selected');
+        showCalDay(el.dataset.date, eventsByDay[el.dataset.date] || []);
+      });
+    });
+
+    if (calSelectedDate) showCalDay(calSelectedDate, eventsByDay[calSelectedDate] || []);
+    else calDayPanel.classList.add('hidden');
+  }
+
+  function showCalDay(dateStr, evts) {
+    calDayPanel.classList.remove('hidden');
+    const d = new Date(dateStr + 'T00:00:00');
+    calDayPanelTitle.textContent = `${HARI_MS[d.getDay()]}, ${d.getDate()} ${BULAN_MS[d.getMonth()]} ${d.getFullYear()} — ${evts.length} program`;
+    if (!evts.length) {
+      calDayPanelList.innerHTML = '<p style="font-size:.8rem;color:var(--muted);">Tiada program pada tarikh ini.</p>';
+      return;
+    }
+    calDayPanelList.innerHTML = evts.map(p => `
+      <a href="#post/${p.key}" class="card cal-day-panel-item">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:.85rem;color:var(--ink);">${esc(p.title || '')}</div>
+          <div style="font-size:.74rem;color:var(--muted);margin-top:.15rem;">${esc(p.organiser || '')} · 📍 ${esc(p.location || '')}</div>
+        </div>
+        ${p.category ? `<span style="font-size:.68rem;color:var(--amber);font-weight:700;flex-shrink:0;">${esc(p.category)}</span>` : ''}
+      </a>`).join('');
   }
 
   // ── PROFILE ──
@@ -1388,12 +1726,16 @@ function initApp() {
   let openComments = new Set();
   let openExpanded = new Set();
   let openMenuKey = null;
-  let dataListenersStarted = false;
   function startDataListeners() {
     if (dataListenersStarted) return;
     dataListenersStarted = true;
-    onValue(ref(db, 'posts'),    snap => { postsState    = snap.val() || {}; renderFeedAndBanner(); },
-      err => showBanner('Gagal muat data program: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
+    onValue(ref(db, 'posts'),    snap => {
+      postsState = snap.val() || {};
+      renderFeedAndBanner();
+      const h = location.hash.replace(/^#\/?/, '');
+      if (h === 'tags' || h === 'orgs') renderDirectory(h === 'tags' ? 'tag' : 'org');
+      if (h === 'kalendar') renderCalendar();
+    }, err => showBanner('Gagal muat data program: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
     onValue(ref(db, 'likes'),    snap => { likesState    = snap.val() || {}; renderFeedAndBanner(); },
       err => showBanner('Gagal muat data suka: ' + (err.message || err.code || 'ralat tidak diketahui'), true));
     onValue(ref(db, 'comments'), snap => { commentsState = snap.val() || {}; renderFeedAndBanner(); },
@@ -1419,6 +1761,13 @@ function initApp() {
     let entries = Object.entries(postsState).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
     const today = new Date().toISOString().slice(0, 10);
 
+    if (searchQuery) {
+      entries = entries.filter(([, p]) => {
+        const haystack = [p.title, p.category, p.organiser, p.questionBody].filter(Boolean).join(' ').toLowerCase();
+        return haystack.includes(searchQuery);
+      });
+    }
+
     if (activeFilter) {
       entries = entries.filter(([, p]) =>
         activeFilter.type === 'tag' ? p.category === activeFilter.value : p.organiser === activeFilter.value);
@@ -1427,6 +1776,7 @@ function initApp() {
       pageHero.classList.remove('hidden');
       const isTag = activeFilter.type === 'tag';
       pageHeroIcon.textContent = isTag ? '🏷' : '🏫';
+      pageHeroBreadcrumb.innerHTML = `<a href="#">News Feed</a> › <a href="#${isTag ? 'tags' : 'orgs'}">${isTag ? 'Kategori' : 'Penganjur'}</a>`;
       pageHeroEyebrow.textContent = isTag ? 'Kategori / Tag' : 'Pengelola / Penganjur';
       pageHeroTitle.textContent = activeFilter.value;
       pageHeroSub.textContent = `${entries.length} program dijumpai`;
@@ -1436,7 +1786,7 @@ function initApp() {
 
       // Banner
       const hi = entries.filter(([, p]) => p.isHighlighted && p.eventDate >= today);
-      highlightBanner.classList.toggle('hidden', hi.length === 0);
+      highlightBanner.classList.toggle('hidden', hi.length === 0 || !!searchQuery);
       highlightScroll.innerHTML = hi.map(([key, p]) => `
         <a href="#post/${key}" class="highlight-chip">
           ${coverImg(p) ? `<img src="${escAttr(coverImg(p))}" alt="${escAttr(p.title)}" />` : `<div style="height:100px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-size:2rem;">📌</div>`}
@@ -1448,8 +1798,24 @@ function initApp() {
     }
 
     // Feed
-    feedEmpty.classList.toggle('hidden', entries.length > 0);
+    feedSkeleton.classList.toggle('hidden', dataListenersStarted);
+    feedEmpty.classList.toggle('hidden', entries.length > 0 || !dataListenersStarted);
+    if (entries.length === 0 && dataListenersStarted) {
+      if (searchQuery) {
+        $('feedEmptyIcon').textContent = '🔍';
+        $('feedEmptyTitle').textContent = 'Tiada hasil dijumpai';
+        $('feedEmptySub').textContent = `Tiada program sepadan dengan "${searchQuery}".`;
+      } else {
+        $('feedEmptyIcon').textContent = '📌';
+        $('feedEmptyTitle').textContent = 'Tiada program lagi';
+        $('feedEmptySub').textContent = 'Jadi yang pertama mencipta program untuk komuniti Subis!';
+      }
+    }
     feedList.innerHTML = '';
+
+    const totalEntries = entries;
+    entries = totalEntries.slice(0, feedVisibleCount);
+    feedLoadMoreWrap.classList.toggle('hidden', totalEntries.length <= feedVisibleCount);
 
     entries.forEach(([key, post]) => {
       const isOwner  = currentUser && currentUser.uid === post.authorId;
@@ -1469,13 +1835,16 @@ function initApp() {
       const winnerImgs   = post.winnerImages || [];
       const hasExtra     = type === 'event' && (posterImgs.length > 1 || activityImgs.length > 0 || winnerImgs.length > 0);
 
-      const metaLine = type === 'event'
-        ? `${esc(post.eventDay || '')}, ${esc(post.eventDate || '')} · ${esc(post.location || '')}`
-        : (type === 'poll' ? '📊 Tinjauan' : '❓ Soalan');
+      const metaLine = timeAgo(post.createdAt);
+
+      const eventInfoLine = type === 'event'
+        ? `${esc(post.eventDay || '')}${post.eventDay ? ', ' : ''}${esc(post.eventDate || '')}${post.location ? ' · 📍 ' + esc(post.location) : ''}`
+        : '';
 
       const bodyHtml = type === 'event' ? `
           ${post.category ? `<span class="badge badge-amber" data-action="filter-tag" data-value="${escAttr(post.category)}" style="cursor:pointer;margin-bottom:.4rem;display:inline-block;">${esc(post.category)}</span>` : ''}
           <span class="fc-title serif" data-action="${hasExtra ? 'toggle-expand' : ''}" data-key="${key}" style="display:block;${hasExtra ? 'cursor:pointer;' : ''}">${esc(post.title)}</span>
+          ${eventInfoLine ? `<div class="fc-eventinfo">📅 ${eventInfoLine}</div>` : ''}
           ${post.organiser ? `<span class="date-chip" data-action="filter-org" data-value="${escAttr(post.organiser)}" style="cursor:pointer;margin-top:.3rem;">🏫 ${esc(post.organiser)}</span>` : ''}
           ${post.registrationLink ? `<a href="${escAttr(post.registrationLink)}" target="_blank" rel="noopener" class="btn btn-amber btn-sm" style="margin-top:.6rem;">Daftar Sekarang →</a>` : ''}
           ${hasExtra ? `<button class="fc-action-btn" data-action="toggle-expand" data-key="${key}" style="margin-top:.5rem;padding:0;">${isExpanded ? '▲ Kurangkan' : '▼ Info Lanjut & Gambar'}</button>` : ''}
@@ -1766,6 +2135,8 @@ function initApp() {
     $('postId').value = '';
     setPostType('event');
     clearPostErr(); showPostProg('');
+    draftModeActive = false;
+    draftBanner.classList.add('hidden');
   }
   $('btnClosePostModal').addEventListener('click', closeEditModal);
 
@@ -1857,6 +2228,80 @@ function initApp() {
   document.querySelectorAll('.post-type-btn').forEach(btn =>
     btn.addEventListener('click', () => setPostType(btn.dataset.type)));
 
+  // ── DRAF AUTO-SAVE (localStorage) ──
+  const DRAFT_KEY = 'subiskini_draft_post_v1';
+  let draftSaveTimer = null;
+  let draftModeActive = false; // true hanya semasa cipta post baharu (bukan edit)
+
+  function collectDraftData() {
+    return {
+      type: postTypeInput.value,
+      title: $('postTitle').value,
+      organiser: $('postOrganiser').value,
+      category: $('postCategory').value,
+      eventDate: $('postEventDate').value,
+      location: $('postLocation').value,
+      registrationLink: $('postRegLink').value,
+      isHighlighted: $('postHighlighted').checked,
+      questionBody: $('postQuestionBody').value,
+      pollOptions: getPollOptionsFromForm().map(o => o.text),
+      savedAt: Date.now()
+    };
+  }
+
+  function saveDraftNow() {
+    try {
+      const d = collectDraftData();
+      const isEmpty = !d.title && !d.organiser && !d.location && !d.questionBody && !d.registrationLink && !d.pollOptions.some(Boolean);
+      if (isEmpty) { localStorage.removeItem(DRAFT_KEY); return; }
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    } catch (e) { /* localStorage tidak tersedia — abaikan */ }
+  }
+
+  function queueDraftSave() {
+    if (!draftModeActive) return;
+    clearTimeout(draftSaveTimer);
+    draftSaveTimer = setTimeout(saveDraftNow, 600);
+  }
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+    draftBanner.classList.add('hidden');
+  }
+
+  function applyDraftToForm(d) {
+    setPostType(d.type || 'event');
+    $('postTitle').value = d.title || '';
+    $('postOrganiser').value = d.organiser || '';
+    $('postCategory').value = d.category || '';
+    $('postEventDate').value = d.eventDate || '';
+    $('postLocation').value = d.location || '';
+    $('postRegLink').value = d.registrationLink || '';
+    $('postHighlighted').checked = !!d.isHighlighted;
+    $('postQuestionBody').value = d.questionBody || '';
+    if (d.pollOptions && d.pollOptions.length) resetPollOptions(d.pollOptions);
+    const ts = d.savedAt ? new Date(d.savedAt).toLocaleString('ms-MY', { dateStyle: 'short', timeStyle: 'short' }) : '';
+    draftBannerText.textContent = '📝 Draf dipulihkan' + (ts ? ' (disimpan ' + ts + ')' : '') + ' — poster/gambar perlu dipilih semula.';
+    draftBanner.classList.remove('hidden');
+  }
+
+  postForm.addEventListener('input', queueDraftSave);
+  postForm.addEventListener('change', queueDraftSave);
+  btnDiscardDraft.addEventListener('click', () => {
+    clearDraft();
+    postForm.reset();
+    setPostType('event');
+    resetPollOptions();
+    $('postQuestionBody').value = '';
+  });
+
   function openPostModal(existing = null, postKey = null) {
     postModalBody.appendChild(postTypeSelectorEl);
     postModalBody.appendChild(postFormWrap);
@@ -1868,8 +2313,10 @@ function initApp() {
 
     const type = (existing && existing.type) || 'event';
     setPostType(type);
+    draftBanner.classList.add('hidden');
 
     if (existing) {
+      draftModeActive = false;
       $('postModalTitle').textContent = 'Edit Post';
       btnSubmitPost.textContent = 'Simpan Perubahan';
       $('postTitle').value = existing.title || '';
@@ -1890,6 +2337,9 @@ function initApp() {
       btnSubmitPost.textContent = 'Hebahkan';
       resetPollOptions();
       $('postQuestionBody').value = '';
+      draftModeActive = true;
+      const draft = loadDraft();
+      if (draft) applyDraftToForm(draft);
     }
     postModal.classList.remove('hidden');
   }
@@ -1966,6 +2416,7 @@ function initApp() {
         });
       }
 
+      if (!isEdit) clearDraft();
       showPostProg('');
       closeEditModal();
       showBanner(isEdit ? 'Post dikemaskini.' : 'Post berjaya dicipta! 🎉');
@@ -2037,6 +2488,14 @@ function initApp() {
         pdWinnerGallery.innerHTML = '';
         pdWinnerSection.classList.add('hidden');
       }
+
+      const pdAuthor = usersState[p.authorId] || {};
+      const pdAuthorName = pdAuthor.displayName || pdAuthor.username || 'Pengguna';
+      $('pdOwnerAvatar').innerHTML = pdAuthor.photoURL ? `<img src="${escAttr(pdAuthor.photoURL)}" alt="" />` : esc(pdAuthorName[0].toUpperCase());
+      $('pdOwnerName').textContent = pdAuthorName;
+      $('pdPostedAt').textContent = timeAgo(p.createdAt);
+      $('pdOwnerAvatarLink').href = '#profile/' + (p.authorId || '');
+      $('pdOwnerNameLink').href = '#profile/' + (p.authorId || '');
 
       $('pdTitle').textContent = p.title || '';
       $('pdOrganiser').textContent = type === 'event' ? (p.organiser || '') : (type === 'poll' ? '📊 Tinjauan' : '❓ Soalan');
@@ -2147,6 +2606,18 @@ function initApp() {
     const d = document.createElement('div');
     d.textContent = String(s || '');
     return d.innerHTML;
+  }
+  function timeAgo(ts) {
+    if (!ts) return '';
+    const diff = Math.max(0, Date.now() - ts);
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return 'Baru sahaja';
+    if (min < 60) return `${min} minit lalu`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr} jam lalu`;
+    const day = Math.floor(hr / 24);
+    if (day < 7) return `${day} hari lalu`;
+    return new Date(ts).toLocaleDateString('ms-MY', { dateStyle: 'medium' });
   }
   function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
   function fbErr(err) {
