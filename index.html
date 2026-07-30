@@ -517,6 +517,57 @@
   .poll-bar-content { position: relative; z-index: 1; display: flex; justify-content: space-between; font-size: .82rem; color: var(--ink); }
   .poll-meta { font-size: .72rem; color: var(--muted); margin-top: .4rem; }
   .question-badge { display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .05em; color: var(--amber); text-transform: uppercase; margin-bottom: .3rem; }
+
+  /* ── FLOATING BOTTOM NAV ── */
+  .floating-nav {
+    position: fixed; left: 50%; bottom: 1.1rem; transform: translateX(-50%);
+    z-index: 55; display: flex; align-items: center; gap: .25rem;
+    background: var(--ink); border-radius: 999px;
+    padding: .5rem .6rem; box-shadow: 0 10px 30px rgba(14,28,42,.35);
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .fnav-btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .1rem; width: 58px; padding: .35rem .2rem; border-radius: 999px;
+    background: transparent; border: none; cursor: pointer; font-family: inherit;
+    color: rgba(246,243,238,.55); transition: all .15s;
+  }
+  .fnav-btn .fnav-icon { font-size: 1.15rem; line-height: 1; }
+  .fnav-btn .fnav-label { font-size: .62rem; font-weight: 600; letter-spacing: .02em; }
+  .fnav-btn:hover { color: var(--paper); }
+  .fnav-btn.active { color: var(--amber2); }
+  .fnav-add {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--amber); color: #fff; font-size: 1.5rem;
+    display: flex; align-items: center; justify-content: center;
+    border: 3px solid var(--paper); cursor: pointer; margin: 0 .15rem;
+    box-shadow: 0 4px 14px rgba(212,137,58,.5); transition: transform .15s, background .15s;
+    flex-shrink: 0;
+  }
+  .fnav-add:hover { background: #C07830; transform: scale(1.06); }
+  body.is-authed .page { padding-bottom: 6.5rem; }
+
+  /* Blank pre-auth background: nothing shown but the modal */
+  body:not(.is-authed) .floating-nav,
+  body:not(.is-authed) footer { display: none !important; }
+
+  /* ── PROFILE TABS (interactions) ── */
+  .profile-tabs { display: flex; gap: .4rem; border-bottom: 1px solid var(--line); margin: 1.5rem 0 1rem; }
+  .profile-tab {
+    padding: .55rem .3rem; font-size: .8rem; font-weight: 600; color: var(--muted);
+    background: transparent; border: none; border-bottom: 2px solid transparent;
+    cursor: pointer; font-family: inherit; transition: all .15s;
+  }
+  .profile-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+  .profile-tab .cnt { color: var(--muted); font-weight: 500; }
+  .profile-interaction-item {
+    display: flex; align-items: center; gap: .7rem; padding: .75rem 0;
+    border-bottom: 1px solid var(--line); text-decoration: none; color: inherit;
+  }
+  .profile-interaction-item:last-child { border-bottom: none; }
+  .pi-icon { font-size: 1.1rem; flex-shrink: 0; width: 26px; text-align: center; }
+  .pi-title { font-size: .85rem; color: var(--ink); font-weight: 600; }
+  .pi-sub { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
 </style>
 </head>
 <body>
@@ -552,8 +603,8 @@
       <div id="highlightScroll" class="highlight-scroll"></div>
     </div>
 
-    <!-- Composer (Hebahan/Tinjauan/Soalan) -->
-    <div class="composer-card" id="composerCard">
+    <!-- Composer (Hebahan/Tinjauan/Soalan) — kini dalam modal, ditrigger oleh butang + terapung -->
+    <div class="composer-card hidden" id="postFormHolder">
       <div class="composer-tabs" id="postTypeSelector">
         <button type="button" class="composer-tab post-type-btn active" data-type="event">📅 Program</button>
         <button type="button" class="composer-tab post-type-btn" data-type="poll">📊 Tinjauan</button>
@@ -857,8 +908,29 @@
         <div class="stat-box"><p class="stat-box-n serif" id="statComments">0</p><p class="stat-box-l">Komen ditulis</p></div>
       </div>
     </div>
+
+    <!-- Interaksi profil -->
+    <div id="profileInteractions" class="hidden">
+      <div class="profile-tabs" id="profileTabs">
+        <button type="button" class="profile-tab active" data-ptab="posts">Program Dicipta <span class="cnt" id="ptabCountPosts"></span></button>
+        <button type="button" class="profile-tab" data-ptab="likes">Disukai <span class="cnt" id="ptabCountLikes"></span></button>
+        <button type="button" class="profile-tab" data-ptab="comments">Komen <span class="cnt" id="ptabCountComments"></span></button>
+      </div>
+      <div id="profileInteractionList"></div>
+    </div>
   </section>
 </main>
+
+<!-- ═══ FLOATING BOTTOM NAV ═══ -->
+<nav class="floating-nav" id="floatingNav">
+  <button type="button" class="fnav-btn" id="fnavHome" title="Laman Utama">
+    <span class="fnav-icon">🏠</span><span class="fnav-label">Home</span>
+  </button>
+  <button type="button" class="fnav-add" id="fnavAdd" title="Tambah Post">+</button>
+  <button type="button" class="fnav-btn" id="fnavProfile" title="Profil Saya">
+    <span class="fnav-icon">👤</span><span class="fnav-label">Profile</span>
+  </button>
+</nav>
 
 <footer style="text-align:center;font-size:.75rem;color:var(--muted);padding:2rem 1rem;border-top:1px solid var(--line);">
   SubisKini · Dibina dengan Firebase + Vercel · PPD Subis
@@ -969,7 +1041,8 @@ function initApp() {
   const postModalTitleEl = $('postModalTitle');
   const postModalBody  = $('postModalBody');
   const postFormWrap   = $('postFormWrap');
-  const composerCard   = $('composerCard');
+  const postFormHolder = $('postFormHolder');
+  const postTypeSelectorEl = $('postTypeSelector');
   const postForm       = $('postForm');
   const postError      = $('postError');
   const postProgress   = $('postProgress');
@@ -1101,6 +1174,23 @@ function initApp() {
     route();
   });
 
+  // ── FLOATING NAV ──
+  $('fnavHome').addEventListener('click', () => { location.hash = ''; });
+  $('fnavAdd').addEventListener('click', () => {
+    if (!currentUser) { $('btnOpenLogin').click(); return; }
+    openPostModal(null, null);
+  });
+  $('fnavProfile').addEventListener('click', () => {
+    if (!currentUser) { $('btnOpenLogin').click(); return; }
+    location.hash = 'profile/' + currentUser.uid;
+  });
+
+  function updateFloatingNavActive(hash) {
+    const home = $('fnavHome'), profile = $('fnavProfile');
+    home.classList.toggle('active', !hash || hash.startsWith('tag/') || hash.startsWith('org/') || hash.startsWith('post/'));
+    profile.classList.toggle('active', hash.startsWith('profile/') && currentUser && hash.split('/')[1] === currentUser.uid);
+  }
+
   // ── ROUTER ──
   let activeFilter = null;
   window.addEventListener('hashchange', route);
@@ -1110,6 +1200,7 @@ function initApp() {
     const hash = location.hash.replace(/^#\/?/, '');
     [viewFeed, viewProfile, viewPost].forEach(v => v.classList.add('hidden'));
     activeFilter = null;
+    updateFloatingNavActive(hash);
     if (hash.startsWith('profile/')) {
       viewProfile.classList.remove('hidden');
       renderProfile(hash.split('/')[1]);
@@ -1143,6 +1234,7 @@ function initApp() {
     const avatarInput = $('profileAvatarInput'), avatarPreview = $('profileAvatarPreview'), avatarHint = $('avatarUploadHint');
     const btnEdit = $('btnEditBio'), btnCancel = $('btnCancelEditBio');
     [content, notFound, editBioForm].forEach(e => e.classList.add('hidden'));
+    $('profileInteractions').classList.add('hidden');
     loading.classList.remove('hidden');
 
     try {
@@ -1221,11 +1313,89 @@ function initApp() {
           btnSave.disabled = false;
         }
       };
-      $('statEvents').textContent = '0';
-      $('statLikes').textContent = '0';
-      $('statComments').textContent = '0';
+      renderProfileInteractions(uid);
     } catch (err) {
       loading.classList.add('hidden'); notFound.classList.remove('hidden');
+    }
+  }
+
+  // ── PROFIL: SEMUA INTERAKSI PENGGUNA ──
+  let activeProfileTab = 'posts';
+  document.querySelectorAll('#profileTabs .profile-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#profileTabs .profile-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeProfileTab = btn.dataset.ptab;
+      renderProfileInteractionList(activeProfileTab);
+    });
+  });
+
+  let profileInteractionData = { posts: [], likes: [], comments: [] };
+
+  function renderProfileInteractions(uid) {
+    const myPosts = Object.entries(postsState).filter(([, p]) => p.authorId === uid)
+      .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+
+    const likedPostKeys = Object.entries(likesState)
+      .filter(([, users]) => users && users[uid])
+      .map(([key]) => key)
+      .filter(key => postsState[key]);
+    const myLikes = likedPostKeys.map(key => [key, postsState[key]])
+      .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+
+    const myComments = [];
+    Object.entries(commentsState).forEach(([postKey, cmts]) => {
+      Object.entries(cmts || {}).forEach(([ck, c]) => {
+        if (c.userId === uid && postsState[postKey]) {
+          myComments.push({ postKey, commentKey: ck, text: c.text, createdAt: c.createdAt, post: postsState[postKey] });
+        }
+      });
+    });
+    myComments.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    profileInteractionData = { posts: myPosts, likes: myLikes, comments: myComments };
+
+    $('statEvents').textContent = myPosts.length;
+    $('statLikes').textContent = myLikes.length;
+    $('statComments').textContent = myComments.length;
+    $('ptabCountPosts').textContent = '(' + myPosts.length + ')';
+    $('ptabCountLikes').textContent = '(' + myLikes.length + ')';
+    $('ptabCountComments').textContent = '(' + myComments.length + ')';
+
+    $('profileInteractions').classList.remove('hidden');
+    document.querySelectorAll('#profileTabs .profile-tab').forEach(b => b.classList.toggle('active', b.dataset.ptab === 'posts'));
+    activeProfileTab = 'posts';
+    renderProfileInteractionList('posts');
+  }
+
+  function postTypeIcon(p) { return p.type === 'poll' ? '📊' : p.type === 'question' ? '❓' : '📅'; }
+
+  function renderProfileInteractionList(tab) {
+    const list = $('profileInteractionList');
+    if (tab === 'posts') {
+      const items = profileInteractionData.posts;
+      list.innerHTML = items.length ? items.map(([key, p]) => `
+        <a href="#post/${key}" class="profile-interaction-item">
+          <span class="pi-icon">${postTypeIcon(p)}</span>
+          <div><div class="pi-title">${esc(p.title)}</div>
+          <div class="pi-sub">${p.createdAt ? new Date(p.createdAt).toLocaleDateString('ms-MY', { dateStyle: 'medium' }) : ''}</div></div>
+        </a>`).join('') : '<p style="font-size:.82rem;color:var(--muted);padding:1rem 0;">Belum ada program dicipta.</p>';
+    } else if (tab === 'likes') {
+      const items = profileInteractionData.likes;
+      list.innerHTML = items.length ? items.map(([key, p]) => `
+        <a href="#post/${key}" class="profile-interaction-item">
+          <span class="pi-icon">❤️</span>
+          <div><div class="pi-title">${esc(p.title)}</div>
+          <div class="pi-sub">${postTypeIcon(p)} ${esc(p.organiser || '')}</div></div>
+        </a>`).join('') : '<p style="font-size:.82rem;color:var(--muted);padding:1rem 0;">Belum ada post disukai.</p>';
+    } else {
+      const items = profileInteractionData.comments;
+      list.innerHTML = items.length ? items.map(c => `
+        <a href="#post/${c.postKey}" class="profile-interaction-item">
+          <span class="pi-icon">💬</span>
+          <div><div class="pi-title">${esc(c.text)}</div>
+          <div class="pi-sub">pada "${esc(c.post.title)}" · ${c.createdAt ? new Date(c.createdAt).toLocaleDateString('ms-MY', { dateStyle: 'medium' }) : ''}</div></div>
+        </a>`).join('') : '<p style="font-size:.82rem;color:var(--muted);padding:1rem 0;">Belum ada komen ditulis.</p>';
     }
   }
 
@@ -1596,9 +1766,10 @@ function initApp() {
 
   // ── POST MODAL (guna untuk EDIT sahaja; composer inline guna untuk create) ──
   function closeEditModal() {
-    composerCard.appendChild(postFormWrap);
+    postFormHolder.appendChild(postTypeSelectorEl);
+    postFormHolder.appendChild(postFormWrap);
     postModal.classList.add('hidden');
-    postModalTitleEl.textContent = 'Edit Post';
+    postModalTitleEl.textContent = 'Cipta Post Baharu';
     btnSubmitPost.textContent = 'Hebahkan';
     postForm.reset();
     [posterPreview, activityPreview, winnerPreview].forEach(p => { p.innerHTML = ''; p.style.display = 'none'; });
@@ -1698,6 +1869,7 @@ function initApp() {
     btn.addEventListener('click', () => setPostType(btn.dataset.type)));
 
   function openPostModal(existing = null, postKey = null) {
+    postModalBody.appendChild(postTypeSelectorEl);
     postModalBody.appendChild(postFormWrap);
     clearPostErr(); showPostProg('');
     postForm.reset();
@@ -1725,8 +1897,8 @@ function initApp() {
       showExistingGallery(activityPreview, activityHint, existing.activityImages);
       showExistingGallery(winnerPreview, winnerHint, existing.winnerImages);
     } else {
-      $('postModalTitle').textContent = 'Edit Post';
-      btnSubmitPost.textContent = 'Simpan Perubahan';
+      $('postModalTitle').textContent = 'Cipta Post Baharu';
+      btnSubmitPost.textContent = 'Hebahkan';
       resetPollOptions();
       $('postQuestionBody').value = '';
     }
@@ -1806,14 +1978,7 @@ function initApp() {
       }
 
       showPostProg('');
-      if (isEdit) {
-        closeEditModal();
-      } else {
-        postForm.reset();
-        [posterPreview, activityPreview, winnerPreview].forEach(p => { p.innerHTML = ''; p.style.display = 'none'; });
-        [posterHint, activityHint, winnerHint].forEach(h => h.style.display = '');
-        setPostType('event');
-      }
+      closeEditModal();
       showBanner(isEdit ? 'Post dikemaskini.' : 'Post berjaya dicipta! 🎉');
     } catch (err) {
       showPostProg(''); showPostErr(err.message || 'Ralat menyimpan post.');
